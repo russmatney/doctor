@@ -5,21 +5,23 @@
              [tick.alpha.api :as t]
              [systemic.core :refer [defsys] :as sys]
              [manifold.stream :as s]
+             [clawe.defs.workspaces :as defs.workspaces]
+             [clawe.workspaces :as clawe.workspaces]
              ]
        :cljs [
               [wing.core :as w]
               [doctor.ui.connected :as connected]
               [plasma.uix :refer [with-rpc with-stream]]
-              [tick.alpha.api :as t]
-              ])
-   ))
+              [tick.alpha.api :as t]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defhandler get-workspaces []
-  (->> []))
+  (->>
+    (clawe.workspaces/all-workspaces)
+    (filter :awesome/tag)))
 
 #?(:clj
    (defsys *workspaces-stream*
@@ -44,12 +46,10 @@
            handle-resp (fn [new-wsps]
                          (swap! workspaces
                                 (fn [wsps]
-                                  ;; (println (str "received " (count wsps) " journals."))
-                                  ;; (println wsps)
                                   (->>
-                                    (concat (or wsps {}) new-wsps)
-                                    (w/index-by :org/id)
-                                    vals))))]
+                                    (concat (or wsps []) new-wsps)
+                                    (w/distinct-by :workspace/title)
+                                    (sort-by :awesome/index)))))]
 
        (with-rpc [@connected/connected?] (get-workspaces) handle-resp)
        (with-stream [@connected/connected?] (workspaces-stream) handle-resp)
@@ -59,10 +59,45 @@
 #?(:cljs
    (defn workspace-comp
      ([wsp] (workspace-comp nil wsp))
-     ([opts wsp]
-      [:div "Workspaces" (str wsp)]
-      ))
-   )
+     ([_opts wsp]
+      (let [{:keys [workspace/title
+                    git/repo
+                    workspace/directory
+                    workspace/color
+                    workspace/title-hiccup
+                    awesome/index
+                    workspace/scratchpad
+                    awesome/clients
+                    ]} wsp]
+        [:div
+         {:class ["m-1"
+                  "p-4"
+                  "border"
+                  "border-city-blue-600"
+                  "bg-yo-blue-700"
+                  "text-white"]}
+         [:div
+          (when color {:style {:color color}})
+          (str title " (" index ")")]
+
+         [:div
+          (when scratchpad
+            (str "#scratchpad"))
+
+          (when repo
+            (str "#repo"))]
+
+         (when (seq clients)
+           [:div
+            (for [c (->> clients)]
+              ^{:key (:window c)}
+              [:div (str "- '" (:name c) "'")])])
+
+         (when title-hiccup
+           [:div title-hiccup])
+
+         (when (or repo directory)
+           [:div (or repo directory)])]))))
 
 #?(:cljs
    (defn widget []
@@ -74,6 +109,11 @@
                   "pb-2"]}
          (str "Workspaces (" (count items) ")")]
 
-        (for [it items]
-          [workspace-comp nil it])]
+        [:div
+         {:class ["flex" "flex-row" "flex-wrap"
+                  "justify-between"
+                  ]}
+         (for [[i it] (->> items (map-indexed vector))]
+           ^{:key i}
+           [workspace-comp nil it])]]
        )))
