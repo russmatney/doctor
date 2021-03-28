@@ -1,0 +1,19 @@
+#+TITLE: Readme
+
+Doctor
+
+An event driven db and plasma dashboard for the health and status of your work.
+
+Primary api is something like ~(doctor/log {:log/subject "" :log/body})~.
+
+Expects to be run locally on your machine.
+
+Supports misc widgets in a clover-based dashboard.
+
+Consumes clawe and ralphie as a clojure-backend, but also exposes an api for
+writing metadata to a database.
+
+Intended to support workflow while working on other tasks - marking rabbitholes
+and decision points so that you can replay and reexamine them later.
+
+Supports configuring health-checks and other automations for workflow problems.

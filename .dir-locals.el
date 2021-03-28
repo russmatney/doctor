@@ -1,0 +1,32 @@
+;;; Directory Local Variables
+;;; For more information see (info "(emacs) Directory Variables")
+
+((clojure-mode
+  (cider-known-endpoints . (("doctor-clj-server" "localhost" "5553")
+                            ("doctor-cljs-shadow" "localhost" "5554")))
+  (cider-clojure-cli-global-options . "-A:app:dev:test")
+  (cider-preferred-build-tool . shadow-cljs)
+  (cider-jack-in-default . shadow-cljs)
+  (cider-default-cljs-repl . shadow)
+  (cider-shadow-default-options . ":app")
+  (cider-shadow-cljs-global-options . "-A:app:dev")
+  (company-css-classes-filepath . "~/russmatney/doctor/public/css/main-built.css"))
+ (clojurec-mode
+  (cider-known-endpoints . (("doctor-clj-server" "localhost" "5553")
+                            ("doctor-cljs-shadow" "localhost" "5554")))
+  (cider-clojure-cli-global-options . "-A:app:dev:test")
+  (cider-preferred-build-tool . shadow-cljs)
+  (cider-jack-in-default . shadow-cljs)
+  (cider-default-cljs-repl . shadow)
+  (cider-shadow-default-options . ":app")
+  (cider-shadow-cljs-global-options . "-A:app:dev")
+  (company-css-classes-filepath . "~/russmatney/doctor/public/css/main-built.css"))
+ (clojurescript-mode
+  (cider-known-endpoints . (("doctor-cljs-shadow" "localhost" "5554")))
+  (cider-clojure-cli-global-options . "-A:app:dev:test")
+  (cider-preferred-build-tool . shadow-cljs)
+  (cider-jack-in-default . shadow-cljs)
+  (cider-default-cljs-repl . shadow)
+  (cider-shadow-default-options . ":app")
+  (cider-shadow-cljs-global-options . "-A:app:dev")
+  (company-css-classes-filepath . "~/russmatney/doctor/public/css/main-built.css")))
