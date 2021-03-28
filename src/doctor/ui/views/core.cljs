@@ -1,4 +1,6 @@
-(ns doctor.ui.views.core)
+(ns doctor.ui.views.core
+  (:require [doctor.ui.views.workspaces :as views.workspaces]))
+
 
 (defn root []
   [:div
@@ -10,4 +12,8 @@
    ;; widget list
    (for [[i widg] (->> ["widg" "et"] (map-indexed vector))]
      ^{:key i}
-     [:div widg])])
+     [:div widg])
+
+
+   [views.workspaces/widget]
+   ])
