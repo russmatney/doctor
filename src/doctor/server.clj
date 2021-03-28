@@ -11,7 +11,7 @@
    [plasma.server :as plasma.server]
    [plasma.server.middleware :as plasma.middleware]
    [doctor.config :as config]
-   [doctor.db.core :as db]
+   ;; [doctor.db.core :as db]
    [doctor.time-literals-transit :as tlt]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -89,7 +89,8 @@
   :extra-deps
   [*dispatch-all*
    *rx*
-   db/*conn*]
+   ;; db/*conn*
+   ]
   :start
   (let [port (:server-port config/*config*)]
     (log/info "Starting *server* on port:" port)
@@ -97,12 +98,12 @@
   :stop (*server*))
 
 (comment
-  *2
   @sys/*registry*
   (sys/stop!)
   (sys/start! `*server*)
+  (sys/start! `*rx*)
 
   (sys/restart! `*server*)
 
   (println "hi")
-  (slurp "http://localhost:5500/ws"))
+  (slurp "http://localhost:7777/ws"))

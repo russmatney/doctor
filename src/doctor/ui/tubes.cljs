@@ -36,14 +36,14 @@
     (plasma/receive! event-v)))
 
 (goog-define SERVER_HOST "localhost")
-(goog-define SERVER_PORT 5555)
+(goog-define SERVER_PORT 7777)
 
 (def ws-url
   (str
     "ws://"
     (or SERVER_HOST "localhost")
     ":"
-    (or SERVER_PORT 5555)
+    (or SERVER_PORT 7777)
     "/ws"))
 
 (def tube

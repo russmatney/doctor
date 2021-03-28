@@ -17,3 +17,15 @@ Intended to support workflow while working on other tasks - marking rabbitholes
 and decision points so that you can replay and reexamine them later.
 
 Supports configuring health-checks and other automations for workflow problems.
+
+* Running locally
+Right now I run the app via electron as:
+
+#+begin_src sh
+# from russmatney/clover
+yrun dev http://localhost:5555 doctor
+#+end_src
+
+You'll want to build the css: ~yrun build~ (in doctor root dir).
+
+Then I jack-in-clj&cljs from the ~doctor.core~ ns.

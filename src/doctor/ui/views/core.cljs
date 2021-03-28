@@ -1,6 +1,5 @@
 (ns doctor.ui.views.core)
 
-
 (defn root []
   [:div
    {:class ["bg-yo-blue-500" "min-h-screen"]}
@@ -11,4 +10,4 @@
    ;; widget list
    (for [[i widg] (->> ["widg" "et"] (map-indexed vector))]
      ^{:key i}
-     [:div [widg]])])
+     [:div widg])])

@@ -8,7 +8,7 @@
   (->
     {:prod (System/getenv "PROD")
      :server-port
-     (or (some-> (System/getenv "SERVER_PORT") int) 5555)
+     (or (some-> (System/getenv "SERVER_PORT") int) 7777)
 
      :db-file                (str (fs/home) "/russmatney/doctor/db/doctor-db-file")
      :db-temp-migration-file (str (fs/home) "/russmatney/doctor/db/doctor-db-migration-file")
