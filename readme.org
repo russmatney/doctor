@@ -29,3 +29,11 @@ yrun dev http://localhost:5555 doctor
 You'll want to build the css: ~yrun build~ (in doctor root dir).
 
 Then I jack-in-clj&cljs from the ~doctor.core~ ns.
+
+* Jump in
+[[file:src/user.clj][user.clj]]
+[[file:deps.edn][deps.edn]]
+[[file:.dir-locals.el][.dir-locals.el]]
+[[file:src/doctor/ui/views/core.cljs][src/doctor/ui/views/core.cljs]]
+[[file:src/doctor/ui/core.cljs][src/doctor/ui/core.cljs]]
+[[file:src/doctor/server.clj][src/doctor/server.clj]]
