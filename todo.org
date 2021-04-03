@@ -1,0 +1,6 @@
+#+TITLE: Todo
+
+
+* [ ] clawe workspaces checkup
+check if clawe's displayed workspace data matches the state returned from
+a clawe cli state-dump binding
