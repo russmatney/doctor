@@ -1,0 +1,125 @@
+(ns doctor.ui.views.dock
+  (:require
+   [plasma.core :refer [defhandler defstream]]
+   #?@(:clj [
+             [tick.alpha.api :as t]
+             [systemic.core :refer [defsys] :as sys]
+             [manifold.stream :as s]
+             [clawe.defs.workspaces :as defs.workspaces]
+             [clawe.workspaces :as clawe.workspaces]
+             ]
+       :cljs [
+              [wing.core :as w]
+              [doctor.ui.connected :as connected]
+              [plasma.uix :refer [with-rpc with-stream]]
+              [tick.alpha.api :as t]])))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; API
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defhandler get-workspaces []
+  (->>
+    (clawe.workspaces/all-workspaces)
+    (filter :awesome/tag)))
+
+(defhandler get-clients []
+  (->>
+    (clawe.clients/all-clients)
+    (filter :awesome/tag)))
+
+#?(:clj
+   ;; TODO nobody is pushing to this rn - maybe comes from a doctor/db listener?
+   (defsys *workspaces-stream*
+     :start (s/stream)
+     :stop (s/close! *workspaces-stream*)))
+
+#?(:clj
+   (comment
+     (sys/start! `*workspaces-stream*)
+
+     ))
+
+(defstream workspaces-stream [] *workspaces-stream*)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Frontend
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#?(:cljs
+   (defn use-workspaces []
+     (let [workspaces  (plasma.uix/state [])
+           handle-resp (fn [new-wsps]
+                         (swap! workspaces
+                                (fn [wsps]
+                                  (->>
+                                    (concat (or wsps []) new-wsps)
+                                    (w/distinct-by :workspace/title)
+                                    (sort-by :awesome/index)))))]
+
+       (with-rpc [@connected/connected?] (get-workspaces) handle-resp)
+       (with-stream [@connected/connected?] (workspaces-stream) handle-resp)
+
+       {:items @workspaces})))
+
+#?(:cljs
+   (defn workspace-comp
+     ([wsp] (workspace-comp nil wsp))
+     ([_opts wsp]
+      (let [{:keys [workspace/title
+                    git/repo
+                    workspace/directory
+                    workspace/color
+                    workspace/title-hiccup
+                    awesome/index
+                    workspace/scratchpad
+                    awesome/clients
+                    ]} wsp]
+        [:div
+         {:class ["m-1"
+                  "p-4"
+                  "border"
+                  "border-city-blue-600"
+                  "bg-yo-blue-700"
+                  "text-white"]}
+         [:div
+          (when color {:style {:color color}})
+          (str title " (" index ")")]
+
+         [:div
+          (when scratchpad
+            (str "#scratchpad"))
+
+          (when repo
+            (str "#repo"))]
+
+         (when (seq clients)
+           [:div
+            (for [c (->> clients)]
+              ^{:key (:window c)}
+              [:div (str "- '" (:name c) "'")])])
+
+         (when title-hiccup
+           [:div title-hiccup])
+
+         (when (or repo directory)
+           [:div (or repo directory)])]))))
+
+#?(:cljs
+   (defn widget []
+     (let [{:keys [items]} (use-workspaces)]
+       [:div
+        {:class ["p-4"]}
+        [:h1
+         {:class ["font-nes" "text-2xl" "text-white"
+                  "pb-2"]}
+         (str "Workspaces (" (count items) ")")]
+
+        [:div
+         {:class ["flex" "flex-row" "flex-wrap"
+                  "justify-between"
+                  ]}
+         (for [[i it] (->> items (map-indexed vector))]
+           ^{:key i}
+           [workspace-comp nil it])]]
+       )))
