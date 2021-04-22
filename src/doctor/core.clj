@@ -1,6 +1,4 @@
 (ns doctor.core)
 
-
 (comment
-  "hello"
-  )
+  "hello")

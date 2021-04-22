@@ -12,7 +12,9 @@
               [wing.core :as w]
               [doctor.ui.connected :as connected]
               [plasma.uix :refer [with-rpc with-stream]]
-              [tick.alpha.api :as t]])))
+              [tick.alpha.api :as t]])
+   [clojure.string :as string]
+   [uix.core.alpha :as uix]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API
@@ -24,9 +26,11 @@
     (filter :awesome/tag)))
 
 (defhandler get-clients []
-  (->>
-    (clawe.clients/all-clients)
-    (filter :awesome/tag)))
+  ;; (->>
+  ;;   (clawe.clients/all-clients)
+  ;;   (filter :awesome/tag))
+  []
+  )
 
 #?(:clj
    ;; TODO nobody is pushing to this rn - maybe comes from a doctor/db listener?
@@ -37,7 +41,6 @@
 #?(:clj
    (comment
      (sys/start! `*workspaces-stream*)
-
      ))
 
 (defstream workspaces-stream [] *workspaces-stream*)
@@ -74,52 +77,62 @@
                     awesome/index
                     workspace/scratchpad
                     awesome/clients
-                    ]} wsp]
+                    awesome/selected
+                    ]} wsp
+            dir-path   (string/replace (or repo directory) "/home/russ" "~")
+            hovering?  (uix/state false)]
         [:div
-         {:class ["m-1"
-                  "p-4"
-                  "border"
-                  "border-city-blue-600"
-                  "bg-yo-blue-700"
-                  "text-white"]}
+         {:class          ["m-1" "p-4"
+                           "border" "border-city-blue-600"
+                           "bg-yo-blue-700"
+                           "text-white"]
+          :on-mouse-enter #(reset! hovering? true)
+          :on-mouse-leave #(reset! hovering? false)}
          [:div
-          (when color {:style {:color color}})
-          (str title " (" index ")")]
+          {:class ["font-nes"]
+           :style (when color {:color color})}
+          (str "(" index ")")
+          (when selected
+            [:span "#*!"]
+            )
+          ]
 
          [:div
-          (when scratchpad
-            (str "#scratchpad"))
+          {:class ["font-mono" "text-lg"]
+           :style (when color {:color color})}
+          title]
 
-          (when repo
-            (str "#repo"))]
-
-         (when (seq clients)
+         (when (or (not scratchpad) @hovering?)
            [:div
-            (for [c (->> clients)]
-              ^{:key (:window c)}
-              [:div (str "- '" (:name c) "'")])])
+            (when scratchpad
+              (str "#scratchpad"))
 
-         (when title-hiccup
-           [:div title-hiccup])
+            (when repo
+              (str "#repo"))])
 
-         (when (or repo directory)
-           [:div (or repo directory)])]))))
+         (when (or (not scratchpad) @hovering?)
+           (when (seq clients)
+             [:div
+              (for [c (->> clients)]
+                (let [c-name (->> c :name (take 10) (apply str))]
+                  ^{:key (:window c)}
+                  [:div c-name]))]))
+
+         (when (or (not scratchpad) @hovering?)
+           (when title-hiccup
+             [:div title-hiccup]))
+
+         (when (or (not scratchpad) @hovering?)
+           (when dir-path
+             [:div dir-path]))]))))
 
 #?(:cljs
    (defn widget []
      (let [{:keys [items]} (use-workspaces)]
-       [:div
-        {:class ["p-4"]}
-        [:h1
-         {:class ["font-nes" "text-2xl" "text-white"
-                  "pb-2"]}
-         (str "Workspaces (" (count items) ")")]
-
         [:div
-         {:class ["flex" "flex-row" "flex-wrap"
-                  "justify-between"
-                  ]}
+         {:class ["flex" "flex-row"
+                  "justify-center"
+                  "overflow-hidden"]}
          (for [[i it] (->> items (map-indexed vector))]
            ^{:key i}
-           [workspace-comp nil it])]]
-       )))
+           [workspace-comp nil it])])))
