@@ -1,20 +1,14 @@
 (ns doctor.ui.views.dock
   (:require
    [plasma.core :refer [defhandler defstream]]
-   #?@(:clj [
-             [tick.alpha.api :as t]
-             [systemic.core :refer [defsys] :as sys]
+   #?@(:clj [[systemic.core :refer [defsys] :as sys]
              [manifold.stream :as s]
-             [clawe.defs.workspaces :as defs.workspaces]
-             [clawe.workspaces :as clawe.workspaces]
-             ]
-       :cljs [
-              [wing.core :as w]
+             [clawe.workspaces :as clawe.workspaces]]
+       :cljs [[wing.core :as w]
               [doctor.ui.connected :as connected]
-              [plasma.uix :refer [with-rpc with-stream]]
-              [tick.alpha.api :as t]])
-   [clojure.string :as string]
-   [uix.core.alpha :as uix]))
+              [clojure.string :as string]
+              [uix.core.alpha :as uix]
+              [plasma.uix :refer [with-rpc with-stream]]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API
@@ -23,7 +17,8 @@
 (defhandler get-workspaces []
   (->>
     (clawe.workspaces/all-workspaces)
-    (filter :awesome/tag)))
+    (filter :awesome/tag)
+    (map #(dissoc % :rules/apply))))
 
 (defhandler get-clients []
   ;; (->>
@@ -129,10 +124,10 @@
 #?(:cljs
    (defn widget []
      (let [{:keys [items]} (use-workspaces)]
-        [:div
-         {:class ["flex" "flex-row"
-                  "justify-center"
-                  "overflow-hidden"]}
-         (for [[i it] (->> items (map-indexed vector))]
-           ^{:key i}
-           [workspace-comp nil it])])))
+       [:div
+        {:class ["flex" "flex-row"
+                 "justify-center"
+                 "overflow-hidden"]}
+        (for [[i it] (->> items (map-indexed vector))]
+          ^{:key i}
+          [workspace-comp nil it])])))

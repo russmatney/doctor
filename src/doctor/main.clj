@@ -12,7 +12,7 @@
   :closure
   (let [nrepl-val (atom nil)
         ;; TODO pull into config in resources/config.edn and aero
-        port      5553]
+        port      3336]
     (log/info "nREPL start" {:port port})
     (try
       (reset! nrepl-val (nrepl/start-server

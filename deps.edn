@@ -3,7 +3,10 @@
  :deps
  {
   ;; dev env
-  wing/wing                     {:mvn/version "0.1.4"}
+  wing/wing
+  {:git/url "https://github.com/teknql/wing.git"
+   :sha     "5c0078739c94e93ab9126f65ed243a6a74aa16d4"}
+
   cider/cider-nrepl             {:mvn/version "0.25.9"}
   refactor-nrepl/refactor-nrepl {:mvn/version "2.5.1"}
 
@@ -18,7 +21,7 @@
   com.taoensso/timbre {:mvn/version "5.1.2"}
 
   ;; file system
-  clj-commons/fs {:mvn/version "1.6.307"}
+  babashka/fs {:mvn/version "0.0.5"}
 
   ;; file-watching
   hawk/hawk {:mvn/version "0.2.11"}
@@ -60,8 +63,7 @@
   hiccup-icons/hiccup-icons {:mvn/version "0.4.4"}
 
   russmatney/clawe   {:local/root "../clawe"}
-  russmatney/ralphie {:local/root "../ralphie"}
-  }
+  russmatney/ralphie {:local/root "../ralphie"}}
 
  :aliases
  {:main     {:main-opts ["-m" "doctor.main"]}

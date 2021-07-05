@@ -97,7 +97,6 @@
     (server/run-server all-routes {:port port}))
   :stop (*server*))
 
-
 (comment
   @sys/*registry*
   (sys/stop!)
@@ -107,4 +106,4 @@
   (sys/restart! `*server*)
 
   (println "hi")
-  (slurp "http://localhost:7777/ws"))
+  (slurp "http://localhost:3334/ws"))

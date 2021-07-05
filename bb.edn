@@ -1,0 +1,2 @@
+{:tasks
+ {dev (shell "echo 'yooooooooooo'")}}

@@ -1,6 +1,6 @@
 {:deps {:aliases [:nrepl :app]}
 
- :nrepl {:port 5554
+ :nrepl {:port 3335
          :middleware
          [cider-nrepl.plugin/middleware
           refactor-nrepl.middleware/wrap-refactor]}
@@ -28,7 +28,7 @@
 
    :devtools
    {:http-root   "public"
-    :http-port   5555
+    :http-port   3333
     :loader-mode :eval
     :after-load  doctor.ui/mount-root
     :repl-pprint true}}}}

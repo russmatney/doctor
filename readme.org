@@ -35,17 +35,25 @@ or
 #+end_src
 
 * Running locally
-Right now I run the app via electron as:
+** backend
+#+begin_src
+clj -M:dev:main
+#+end_src
 
+cider connect from there
+** frontend
+#+begin_src
+npx shadow-cljs watch app
+#+end_src
+
+cider connect from there
+** electron
 #+begin_src sh
 # from russmatney/clover
-yrun dev http://localhost:5555 doctor
+yrun dev http://localhost:3333 doctor
 #+end_src
 
 You'll want to build the css: ~yrun build~ (in doctor root dir).
-
-Then I jack-in-clj&cljs from the ~doctor.core~ ns.
-
 * Jump in
 [[file:src/user.clj][user.clj]]
 [[file:deps.edn][deps.edn]]
