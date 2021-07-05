@@ -79,21 +79,12 @@
 ;; Server
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (fn handler
-;;   ([request]
-;;    (-> (response/render "not found" request)
-;;        (status 404)
-;;        (cond-> (= (:request-method request) :head) (assoc :body nil))))
-;;   ([request respond raise]
-;;    (respond (handler request))))
-
 (c/defroutes all-routes
   (c/GET "/ws" [] (websocket-handler
                     *rx* {}
                     {:read-handlers  tlt/read-handlers
                      :write-handlers tlt/write-handlers}))
   (c/GET "/dock/update" []
-         (println "hello /dock/update")
          (dock/update-dock)
          nil)
   (c.route/not-found "Not found"))

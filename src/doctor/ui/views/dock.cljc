@@ -3,7 +3,9 @@
    [plasma.core :refer [defhandler defstream]]
    #?@(:clj [[systemic.core :refer [defsys] :as sys]
              [manifold.stream :as s]
-             [clawe.workspaces :as clawe.workspaces]]
+             [clawe.workspaces :as clawe.workspaces]
+             [clawe.scratchpad :as scratchpad]
+             ]
        :cljs [[wing.core :as w]
               [doctor.ui.connected :as connected]
               [clojure.string :as string]
@@ -24,13 +26,6 @@
 (defhandler get-workspaces []
   (active-workspaces))
 
-(defhandler get-clients []
-  ;; (->>
-  ;;   (clawe.clients/all-clients)
-  ;;   (filter :awesome/tag))
-  []
-  )
-
 #?(:clj
    (defsys *workspaces-stream*
      :start (s/stream)
@@ -40,7 +35,6 @@
    (comment
      (sys/start! `*workspaces-stream*)
      ))
-
 
 (defstream workspaces-stream [] *workspaces-stream*)
 
@@ -58,6 +52,26 @@
      (update-dock)
      ))
 
+(defhandler hide-workspace [item]
+  (println "hide wsp" (:name item))
+  (->
+    item
+    ;; :name
+    ;; clawe.workspaces/for-name
+    clawe.workspaces/merge-awm-tags
+    scratchpad/toggle-scratchpad)
+  (update-dock))
+
+(defhandler show-workspace [item]
+  (println "show wsp" (:name item))
+  (->
+    item
+    ;; :name
+    ;; clawe.workspaces/for-name
+    clawe.workspaces/merge-awm-tags
+    scratchpad/toggle-scratchpad)
+  (update-dock))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -67,9 +81,6 @@
    (defn use-workspaces []
      (let [workspaces  (plasma.uix/state [])
            handle-resp (fn [new-wsps]
-                         (println "use-wsps recd" (count new-wsps))
-                         (println (->> new-wsps first :name))
-                         (println (->> new-wsps last :name))
                          (swap! workspaces
                                 (fn [wsps]
                                   (->>
@@ -84,6 +95,29 @@
        (with-stream [@connected/connected?] (workspaces-stream) handle-resp)
 
        {:items @workspaces})))
+
+#?(:cljs
+   (defn ->actions [item]
+     (let [{:keys [
+                   workspace/title
+                   git/repo
+                   workspace/directory
+                   workspace/color
+                   workspace/title-hiccup
+                   awesome/index
+                   workspace/scratchpad
+                   awesome/clients
+                   awesome/selected
+                   ]} item]
+       (->>
+         [(when selected
+            {:action/label    "hide"
+             :action/on-click #(hide-workspace item)})
+          (when-not selected
+            {:action/label    "show"
+             :action/on-click #(show-workspace item)})]
+         (remove nil?)))))
+
 
 #?(:cljs
    (defn workspace-comp
@@ -142,14 +176,22 @@
 
          (when (or (not scratchpad) @hovering?)
            (when dir-path
-             [:div dir-path]))]))))
+             [:div dir-path]))
+
+         (when @hovering?
+           [:div
+            (for [ax (->actions wsp)]
+              ^{:key (:action/label ax)}
+              [:div
+               {:class    ["cursor-pointer"
+                           "hover:text-yo-blue-300"
+                           ]
+                :on-click (:action/on-click ax)}
+               (:action/label ax)])])]))))
 
 #?(:cljs
    (defn widget []
      (let [{:keys [items]} (use-workspaces)]
-       (println (count items) "workspaces received")
-       (println (->> items first :name))
-       (println (->> items last :name))
        [:div
         {:class ["flex" "flex-row"
                  "justify-center"
