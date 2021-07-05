@@ -1,0 +1,9 @@
+{:lint-as
+ {systemic.core/defsys clojure.core/def}
+ :hooks
+ {:analyze-call {plasma.core/defhandler hooks.plasma/defhandler
+                 plasma.core/defstream  hooks.plasma/defhandler}}
+ :linters {:unresolved-symbol
+           {:exclude [(clojure.core.match/match)
+                      (wing.test/assert-match)
+                      match?]}}}
