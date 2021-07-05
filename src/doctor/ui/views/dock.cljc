@@ -14,11 +14,15 @@
 ;; API
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+#?(:clj
+   (defn active-workspaces []
+     (->>
+       (clawe.workspaces/all-workspaces)
+       (filter :awesome/tag)
+       (map #(dissoc % :rules/apply))) ))
+
 (defhandler get-workspaces []
-  (->>
-    (clawe.workspaces/all-workspaces)
-    (filter :awesome/tag)
-    (map #(dissoc % :rules/apply))))
+  (active-workspaces))
 
 (defhandler get-clients []
   ;; (->>
@@ -28,7 +32,6 @@
   )
 
 #?(:clj
-   ;; TODO nobody is pushing to this rn - maybe comes from a doctor/db listener?
    (defsys *workspaces-stream*
      :start (s/stream)
      :stop (s/close! *workspaces-stream*)))
@@ -38,7 +41,23 @@
      (sys/start! `*workspaces-stream*)
      ))
 
+
 (defstream workspaces-stream [] *workspaces-stream*)
+
+#?(:clj
+   (defn update-dock []
+     (s/put! *workspaces-stream* (active-workspaces))))
+
+#?(:clj
+   (comment
+     (->>
+       (active-workspaces)
+       (sort-by :awesome/index)
+       first)
+
+     (update-dock)
+     ))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -48,10 +67,16 @@
    (defn use-workspaces []
      (let [workspaces  (plasma.uix/state [])
            handle-resp (fn [new-wsps]
+                         (println "use-wsps recd" (count new-wsps))
+                         (println (->> new-wsps first :name))
+                         (println (->> new-wsps last :name))
                          (swap! workspaces
                                 (fn [wsps]
                                   (->>
-                                    (concat (or wsps []) new-wsps)
+                                    (concat
+                                      ;; TODO work around this keeping the 'old' ones
+                                      ;; (or wsps [])
+                                      new-wsps)
                                     (w/distinct-by :workspace/title)
                                     (sort-by :awesome/index)))))]
 
@@ -88,9 +113,7 @@
            :style (when color {:color color})}
           (str "(" index ")")
           (when selected
-            [:span "#*!"]
-            )
-          ]
+            [:span "#*!"])]
 
          [:div
           {:class ["font-mono" "text-lg"]
@@ -124,6 +147,9 @@
 #?(:cljs
    (defn widget []
      (let [{:keys [items]} (use-workspaces)]
+       (println (count items) "workspaces received")
+       (println (->> items first :name))
+       (println (->> items last :name))
        [:div
         {:class ["flex" "flex-row"
                  "justify-center"

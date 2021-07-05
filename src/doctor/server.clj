@@ -12,7 +12,8 @@
    [plasma.server.middleware :as plasma.middleware]
    [doctor.config :as config]
    ;; [doctor.db.core :as db]
-   [doctor.time-literals-transit :as tlt]))
+   [doctor.time-literals-transit :as tlt]
+   [doctor.ui.views.dock :as dock]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tubes setup systems
@@ -78,17 +79,30 @@
 ;; Server
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; (fn handler
+;;   ([request]
+;;    (-> (response/render "not found" request)
+;;        (status 404)
+;;        (cond-> (= (:request-method request) :head) (assoc :body nil))))
+;;   ([request respond raise]
+;;    (respond (handler request))))
+
 (c/defroutes all-routes
   (c/GET "/ws" [] (websocket-handler
                     *rx* {}
                     {:read-handlers  tlt/read-handlers
                      :write-handlers tlt/write-handlers}))
+  (c/GET "/dock/update" []
+         (println "hello /dock/update")
+         (dock/update-dock)
+         nil)
   (c.route/not-found "Not found"))
 
 (defsys *server*
   :extra-deps
   [*dispatch-all*
    *rx*
+   dock/*workspaces-stream*
    ;; db/*conn*
    ]
   :start
@@ -105,5 +119,6 @@
 
   (sys/restart! `*server*)
 
+  (slurp "http://localhost:3334/dock/update")
   (println "hi")
   (slurp "http://localhost:3334/ws"))
