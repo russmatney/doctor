@@ -40,6 +40,7 @@
 
 #?(:clj
    (defn update-dock []
+     (println "pushing to workspaces stream (updating dock)!")
      (s/put! *workspaces-stream* (active-workspaces))))
 
 #?(:clj
@@ -147,7 +148,7 @@
            :style (when color {:color color})}
           (str "(" index ")")
           (when selected
-            [:span "#*!"])]
+            [:span {:style {:color "#d28343"}} " #*!"])]
 
          [:div
           {:class ["font-mono" "text-lg"]

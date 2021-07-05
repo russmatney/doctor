@@ -85,9 +85,12 @@
                     {:read-handlers  tlt/read-handlers
                      :write-handlers tlt/write-handlers}))
   (c/GET "/dock/update" []
-         (dock/update-dock)
-         nil)
+         (do
+           (println "hello /dock/update")
+           (dock/update-dock)
+           nil))
   (c.route/not-found "Not found"))
+
 
 (defsys *server*
   :extra-deps
