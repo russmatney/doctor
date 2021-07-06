@@ -5,6 +5,7 @@
              [manifold.stream :as s]
              [clawe.workspaces :as clawe.workspaces]
              [clawe.scratchpad :as scratchpad]
+             [clawe.awesome :as c.awm]
              ]
        :cljs [[wing.core :as w]
               [doctor.ui.connected :as connected]
@@ -73,6 +74,36 @@
     scratchpad/toggle-scratchpad)
   (update-dock))
 
+(defhandler bring-dock-above []
+  (println "bring dock above")
+  (c.awm/awm-fnl
+    '(->
+       (client.get)
+       (lume.filter (fn [c] (= c.name "clover/doctor-dock")))
+       (lume.first)
+       ((fn [c]
+          (pp {:setting :above})
+          (tset c :ontop true)
+          (tset c :above true)
+          (pp (. c :above))
+          (pp (. c :ontop))
+          )))))
+
+(defhandler push-dock-below []
+  (println "push dock below")
+  (c.awm/awm-fnl
+    '(->
+       (client.get)
+       (lume.filter (fn [c] (= c.name "clover/doctor-dock")))
+       (lume.first)
+       ((fn [c]
+          (pp {:setting :below})
+          (tset c :ontop false)
+          (tset c :above false)
+          (pp (. c :above))
+          (pp (. c :ontop)))))))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -99,8 +130,7 @@
 
 #?(:cljs
    (defn ->actions [item]
-     (let [{:keys [
-                   workspace/title
+     (let [{:keys [workspace/title
                    git/repo
                    workspace/directory
                    workspace/color
@@ -108,8 +138,7 @@
                    awesome/index
                    workspace/scratchpad
                    awesome/clients
-                   awesome/selected
-                   ]} item]
+                   awesome/selected]} item]
        (->>
          [(when selected
             {:action/label    "hide"
@@ -137,23 +166,22 @@
             dir-path   (string/replace (or repo directory) "/home/russ" "~")
             hovering?  (uix/state false)]
         [:div
-         {:class          ["m-1" "p-4"
-                           "border" "border-city-blue-600"
-                           "bg-yo-blue-700"
-                           "text-white"]
-          :on-mouse-enter #(reset! hovering? true)
-          :on-mouse-leave #(reset! hovering? false)}
+         {:class
+          ["m-1" "p-4" "mt-auto"
+           "border" "border-city-blue-600"
+           "bg-yo-blue-700"
+           "text-white"]
+          :on-mouse-enter #(do (reset! hovering? true)
+                               (bring-dock-above))
+          :on-mouse-leave #(do (reset! hovering? false)
+                               (push-dock-below))}
          [:div
-          {:class ["font-mono" "text-lg"]
-           :style (when color {:color color})}
-          title
-          (when selected
-            [:span {:style {:color "#d28343"}} " #*!"])]
+          {:class ["font-nes" "text-lg"]
+           :style (when (or selected color)
+                    {:color (if selected "#d28343" color)})}
+          (str "(" index ") ")
 
-         [:div
-          {:class ["font-nes"]
-           :style (when color {:color color})}
-          (str "(" index ")")]
+          title]
 
          (when @hovering?
            [:div
@@ -185,8 +213,7 @@
               ^{:key (:action/label ax)}
               [:div
                {:class    ["cursor-pointer"
-                           "hover:text-yo-blue-300"
-                           ]
+                           "hover:text-yo-blue-300"]
                 :on-click (:action/on-click ax)}
                (:action/label ax)])])]))))
 
@@ -196,6 +223,7 @@
        [:div
         {:class ["flex" "flex-row"
                  "justify-center"
+                 "min-h-screen"
                  "overflow-hidden"]}
         (for [[i it] (->> items (map-indexed vector))]
           ^{:key i}
