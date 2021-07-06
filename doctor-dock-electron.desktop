@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=0.1
+Name=Doctor Dock Electron
+GenericName=Dock
+Comment=Launch a new instance of the Doctor Dock
+Exec=/home/russ/russmatney/doctor/start-doctor-dock-electron.sh
+Terminal=false
+Type=Application

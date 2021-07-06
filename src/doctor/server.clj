@@ -86,11 +86,10 @@
                      :write-handlers tlt/write-handlers}))
   (c/GET "/dock/update" []
          (do
-           (println "hello /dock/update")
+           (println "hello /dock/update" (System/currentTimeMillis))
            (dock/update-dock)
            nil))
   (c.route/not-found "Not found"))
-
 
 (defsys *server*
   :extra-deps

@@ -144,18 +144,18 @@
           :on-mouse-enter #(reset! hovering? true)
           :on-mouse-leave #(reset! hovering? false)}
          [:div
-          {:class ["font-nes"]
+          {:class ["font-mono" "text-lg"]
            :style (when color {:color color})}
-          (str "(" index ")")
+          title
           (when selected
             [:span {:style {:color "#d28343"}} " #*!"])]
 
          [:div
-          {:class ["font-mono" "text-lg"]
+          {:class ["font-nes"]
            :style (when color {:color color})}
-          title]
+          (str "(" index ")")]
 
-         (when (or (not scratchpad) @hovering?)
+         (when @hovering?
            [:div
             (when scratchpad
               (str "#scratchpad"))
@@ -163,7 +163,7 @@
             (when repo
               (str "#repo"))])
 
-         (when (or (not scratchpad) @hovering?)
+         (when @hovering?
            (when (seq clients)
              [:div
               (for [c (->> clients)]
@@ -171,11 +171,11 @@
                   ^{:key (:window c)}
                   [:div c-name]))]))
 
-         (when (or (not scratchpad) @hovering?)
+         (when @hovering?
            (when title-hiccup
              [:div title-hiccup]))
 
-         (when (or (not scratchpad) @hovering?)
+         (when @hovering?
            (when dir-path
              [:div dir-path]))
 

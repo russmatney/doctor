@@ -24,6 +24,7 @@
 (def routes
   [["/" {:name :page/home}]
    ["/dock" {:name :page/dock}]
+   ["/dock-bg" {:name :page/dock-bg}]
    ["/counter" {:name :page/counter}]])
 
 (defn home []
@@ -48,9 +49,8 @@
   (let [page-name (-> router/*match* uix/context :data :name)]
     (case page-name
       :page/home    [home]
-      :page/dock
-      [root]
-      ;; [views.dock/widget]
+      :page/dock-bg [root]
+      :page/dock    [views.dock/widget]
       :page/counter [counter]
       [home])))
 
