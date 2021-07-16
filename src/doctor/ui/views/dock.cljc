@@ -86,12 +86,8 @@
        (lume.filter (fn [c] (= c.name "clover/doctor-dock")))
        (lume.first)
        ((fn [c]
-          (pp {:setting :above})
-          (tset c :ontop true)
           (tset c :above true)
-          (pp (. c :above))
-          (pp (. c :ontop))
-          )))))
+          (tset c :below false))))))
 
 (defhandler push-dock-below []
   (println "push dock below")
@@ -101,11 +97,9 @@
        (lume.filter (fn [c] (= c.name "clover/doctor-dock")))
        (lume.first)
        ((fn [c]
-          (pp {:setting :below})
-          (tset c :ontop false)
           (tset c :above false)
-          (pp (. c :above))
-          (pp (. c :ontop)))))))
+          (tset c :below true)
+          )))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -233,7 +227,10 @@
           ["m-1" "p-4" "mt-auto"
            "border" "border-city-blue-600"
            "bg-yo-blue-700"
-           "text-white"]
+           "text-white"
+           "transform"
+           "hover:scale-110"
+           "duration-300"]
           :on-mouse-enter #(do (reset! hovering? true)
                                (bring-dock-above))
           :on-mouse-leave #(do (reset! hovering? false)

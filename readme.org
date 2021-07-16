@@ -17,7 +17,7 @@ and decision points so that you can replay and reexamine them later.
 Supports configuring health-checks and other automations for workflow problems.
 
 * Clojure Usage
-Primary api is something like
+api could be something like
 
 #+begin_src clojure
 (doctor/log
