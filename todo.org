@@ -4,3 +4,5 @@
 * [ ] clawe workspaces checkup
 check if clawe's displayed workspace data matches the state returned from
 a clawe cli state-dump binding
+* [ ] todo health checkup
+repo todos collected from source code and todo.org files
