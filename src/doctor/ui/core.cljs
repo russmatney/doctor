@@ -9,7 +9,9 @@
    [wing.uix.router :as router]
    [uix.core.alpha :as uix]
 
-   [doctor.ui.views.dock :as views.dock]))
+   [doctor.ui.views.dock :as views.dock]
+   [doctor.ui.views.screenshots :as views.screenshots]
+   ))
 
 (defn root []
   [:div
@@ -25,7 +27,8 @@
   [["/" {:name :page/home}]
    ["/dock" {:name :page/dock}]
    ["/dock-bg" {:name :page/dock-bg}]
-   ["/counter" {:name :page/counter}]])
+   ["/counter" {:name :page/counter}]
+   ["/screenshots" {:name :page/screenshots}]])
 
 (defn home []
   (let [params (router/use-route-parameters)]
@@ -48,13 +51,12 @@
   []
   (let [page-name (-> router/*match* uix/context :data :name)]
     (case page-name
-      :page/home    [home]
-      :page/dock-bg [root]
-      :page/dock    [views.dock/widget]
-      :page/counter [counter]
+      :page/home        [home]
+      :page/dock-bg     [root]
+      :page/dock        [views.dock/widget]
+      :page/counter     [counter]
+      :page/screenshots [views.screenshots/widget]
       [home])))
-
-
 
 (defn ^:dev/after-load mount-root []
   (time-literals.read-write/print-time-literals-cljs!)
@@ -63,7 +65,6 @@
      {:routes routes}
      view]
     (.getElementById js/document "app")))
-
 
 (defn dev-setup []
   (enable-console-print!))
