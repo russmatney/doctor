@@ -248,6 +248,9 @@
                       color    ""
                       :else    "text-yo-blue-300")]
             :style (when (and (not selected) (not urgent) color) {:color color})}
+           (when (#{0} (count clients))
+             (str "(" index ") "))
+
            title]]
 
          (when @hovering?
