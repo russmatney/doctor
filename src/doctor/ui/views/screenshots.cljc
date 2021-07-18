@@ -19,12 +19,14 @@
 
 #?(:clj
    (defn active-screenshots []
-     (->>
-       (concat
-         [{:name          "Example item"
-           :file/filename "some filepath"}]
-         (c.screenshots/all-screenshots))
-       (take 5))))
+     (let [all     (c.screenshots/all-screenshots)
+           example {:name          "Example item"
+                    :file/filename "some filepath"}]
+       (->>
+         (conj all example)
+         (take 5)
+         (into []))
+       )))
 
 (defhandler get-screenshots []
   (active-screenshots))
@@ -107,7 +109,7 @@
           :on-mouse-leave #(do (reset! hovering? false))}
          (when web-asset-path
            [:img {:src   web-asset-path
-                  :class ["max-w-min"]}])
+                  :class ["max-w-6xl"]}])
 
          [:div
           {:class ["font-nes" "text-lg"]}
