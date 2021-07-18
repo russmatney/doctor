@@ -140,6 +140,7 @@
                    awesome/index
                    workspace/scratchpad
                    awesome/clients
+                   awesome/urgent
                    awesome/selected]} item]
        (->>
          [(when selected
@@ -162,8 +163,8 @@
           :icon  octicons/beaker}
 
          (= "Alacritty" class)
-         {:color "text-city-red-400"
-          :icon  octicons/terminal}
+         {:color "text-city-green-600"
+          :icon  octicons/terminal16}
 
          (= "Spotify" class)
          {:color "text-city-green-400"
@@ -181,6 +182,10 @@
          {:color "text-city-green-400"
           :icon  fa4/slack}
 
+         (= "Rofi" class)
+         {:color "text-city-green-400"
+          :icon  octicons/terminal}
+
          :else
          (println "missing icon for client" client)))))
 
@@ -192,13 +197,16 @@
         (for [c (->> clients
                      (remove (comp #(= "clover/doctor-dock" %) :name)))]
           (let [c-name               (->> c :name (take 15) (apply str))
+                {:keys [urgent]}     c
                 {:keys [color icon]} (client->icon c)]
             ^{:key (:window c)}
             [:div
              {:on-click #(js/alert c)
               :class    ["flex" "flex-row" "items-center"]}
              [:div
-              {:class [(or color "text-city-blue-400")
+              {:class [(cond urgent "text-city-red-400"
+                             color  color
+                             :else  "text-city-blue-400")
                        "text-3xl"
                        "p-2"]}
               (or icon c-name)]]))])))
@@ -216,6 +224,7 @@
                     workspace/scratchpad
                     awesome/clients
                     awesome/selected
+                    awesome/urgent
                     ]} wsp
             dir-path   (string/replace (or repo directory) "/home/russ" "~")
             hovering?  (uix/state false)]
@@ -235,9 +244,13 @@
           [client-icons clients]
 
           [:div
-           {:class ["font-nes" "text-lg" "px-2"]
-            :style (when (or selected color)
-                     {:color (if selected "#d28343" color)})}
+           {:class ["font-nes" "text-lg" "px-2"
+                    (cond
+                      urgent   "text-city-red-400"
+                      selected "text-city-orange-400"
+                      color    ""
+                      :else    "text-yo-blue-300")]
+            :style (when (and (not selected) (not urgent) color) {:color color})}
            title]]
 
          (when @hovering?
