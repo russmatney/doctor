@@ -40,6 +40,9 @@
 
 (defsys *server*
   "Doctor webserver"
+  :extra-deps
+  [dock/*workspaces-stream*
+   screenshots/*screenshots-stream*]
   :start
   (let [port (:server/port config/*config*)]
     (log/info "Starting *server* on port" port)
