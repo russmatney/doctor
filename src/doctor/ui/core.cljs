@@ -66,15 +66,18 @@
 
 (defn on-close []
   (log/info "Connection with server closed")
-  (connected/reset false))
+  ;; (connected/reset false)
+  )
 
 (defn on-error []
   (log/info "Connection with server error")
-  (connected/reset false))
+  ;; (connected/reset false)
+  )
 
 (defn on-open []
   (log/info "Connection with server open")
-  (connected/reset true))
+  ;; (connected/reset true)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Bootstrap

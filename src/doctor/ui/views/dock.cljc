@@ -8,10 +8,14 @@
              [clawe.awesome :as c.awm]
              ]
        :cljs [[wing.core :as w]
-              [doctor.ui.connected :as connected]
               [clojure.string :as string]
               [uix.core.alpha :as uix]
-              [plasma.uix :refer [with-rpc with-stream]]])))
+              [plasma.uix :refer [with-rpc with-stream]]
+              [hiccup-icons.octicons :as octicons]
+              [hiccup-icons.fa :as fa]
+              [hiccup-icons.fa4 :as fa4]
+              [hiccup-icons.mdi :as mdi]
+              ])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API
@@ -103,8 +107,6 @@
           (pp (. c :above))
           (pp (. c :ontop)))))))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -123,8 +125,8 @@
                                     (w/distinct-by :workspace/title)
                                     (sort-by :awesome/index)))))]
 
-       (with-rpc [@connected/connected?] (get-workspaces) handle-resp)
-       (with-stream [@connected/connected?] (workspaces-stream) handle-resp)
+       (with-rpc [] (get-workspaces) handle-resp)
+       (with-stream [] (workspaces-stream) handle-resp)
 
        {:items @workspaces})))
 
@@ -148,6 +150,54 @@
              :action/on-click #(show-workspace item)})]
          (remove nil?)))))
 
+#?(:cljs
+   (defn client->icon [client]
+     ;; TODO namespace client keys
+     ;; TODO get filepaths for class == emacs clients
+     ;; i.e. emacs clients could have types for clojure project, react/python project, org file, etc
+     (let [{:keys [class]} client]
+       (cond
+         (= "Emacs" class)
+         {:color "text-city-blue-400"
+          :icon  octicons/beaker}
+
+         (= "Alacritty" class)
+         {:color "text-city-red-400"
+          :icon  octicons/terminal}
+
+         (= "Spotify" class)
+         {:color "text-city-green-400"
+          :icon  fa/music-solid}
+
+         (= "firefox" class)
+         {:color "text-city-red-300"
+          :icon  fa4/firefox}
+
+         (= "Slack" class)
+         {:color "text-city-red-400"
+          :icon  fa4/slack}
+
+         :else
+         (println "missing icon for client" client)))))
+
+#?(:cljs
+   (defn client-icons [clients]
+     (when (seq clients)
+       [:div
+        {:class ["flex" "flex-row"]}
+        (for [c (->> clients
+                     (remove (comp #(= "clover/doctor-dock" %) :name)))]
+          (let [c-name               (->> c :name (take 15) (apply str))
+                {:keys [color icon]} (client->icon c)]
+            ^{:key (:window c)}
+            [:div
+             {:on-click #(js/alert c)
+              :class    ["flex" "flex-row" "items-center"]}
+             [:div
+              {:class [(or color "text-city-blue-400")
+                       "text-3xl"
+                       "p-2"]}
+              (or icon c-name)]]))])))
 
 #?(:cljs
    (defn workspace-comp
@@ -176,12 +226,18 @@
           :on-mouse-leave #(do (reset! hovering? false)
                                (push-dock-below))}
          [:div
-          {:class ["font-nes" "text-lg"]
-           :style (when (or selected color)
-                    {:color (if selected "#d28343" color)})}
-          (str "(" index ") ")
+          {:class ["flex" "flex-row"
+                   "items-center"]}
+          [client-icons clients]
 
-          title]
+          [:div
+           {:class ["font-nes" "text-lg" "px-2"]
+            :style (when (or selected color)
+                     {:color (if selected "#d28343" color)})}
+           title]]
+
+         (when @hovering?
+           (str "(" index ")"))
 
          (when @hovering?
            [:div
@@ -190,14 +246,6 @@
 
             (when repo
               (str "#repo"))])
-
-         (when @hovering?
-           (when (seq clients)
-             [:div
-              (for [c (->> clients)]
-                (let [c-name (->> c :name (take 10) (apply str))]
-                  ^{:key (:window c)}
-                  [:div c-name]))]))
 
          (when @hovering?
            (when title-hiccup
