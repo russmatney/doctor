@@ -19,11 +19,6 @@
 
 #?(:clj
    (defn active-screenshots []
-     ;; (->>
-     ;;   (clawe.screenshots/all-screenshots)
-     ;;   (filter :awesome/tag)
-     ;;   (map #(dissoc % :rules/apply))
-     ;;   )
      (->>
        (concat
          [{:name          "Example item"
@@ -48,8 +43,8 @@
 
 
 #?(:clj
-   (defn update-dock []
-     (println "pushing to screenshots stream (updating dock)!")
+   (defn update-screenshots []
+     (println "pushing to screenshots stream (updating screenshots)!")
      (s/put! *screenshots-stream* (active-screenshots))))
 
 #?(:clj
@@ -58,7 +53,7 @@
        (active-screenshots)
        first)
 
-     (update-dock)
+     (update-screenshots)
      ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -69,7 +64,7 @@
    (defn use-screenshots []
      (let [screenshots (plasma.uix/state [])
            handle-resp (fn [new-items]
-                         (println "new-items" new-items)
+                         (println "new-items" (count new-items))
                          (swap! screenshots
                                 (fn [items]
                                   (->>
@@ -111,7 +106,8 @@
           :on-mouse-enter #(do (reset! hovering? true))
           :on-mouse-leave #(do (reset! hovering? false))}
          (when web-asset-path
-           [:img {:src web-asset-path}])
+           [:img {:src   web-asset-path
+                  :class ["max-w-min"]}])
 
          [:div
           {:class ["font-nes" "text-lg"]}

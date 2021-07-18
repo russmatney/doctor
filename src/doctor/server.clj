@@ -13,7 +13,8 @@
    [doctor.config :as config]
    ;; [doctor.db.core :as db]
    [doctor.time-literals-transit :as tlt]
-   [doctor.ui.views.dock :as dock]))
+   [doctor.ui.views.dock :as dock]
+   [doctor.ui.views.screenshots :as screenshots]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tubes setup systems
@@ -89,13 +90,20 @@
            (println "hello /dock/update" (System/currentTimeMillis))
            (dock/update-dock)
            nil))
+  (c/GET "/screenshots/update" []
+         (do
+           (println "hello /screenshot/update" (System/currentTimeMillis))
+           (screenshots/update-screenshots)
+           nil))
   (c.route/not-found "Not found"))
+
 
 (defsys *server*
   :extra-deps
   [*dispatch-all*
    *rx*
    dock/*workspaces-stream*
+   screenshots/*screenshots-stream*
    ;; db/*conn*
    ]
   :start
