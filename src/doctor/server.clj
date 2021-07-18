@@ -1,125 +1,86 @@
 (ns doctor.server
   (:require
-   [org.httpkit.server :as server]
    [taoensso.timbre :as log]
-   [pneumatic-tubes.core :as tubes]
-   [pneumatic-tubes.httpkit :refer [websocket-handler]]
    [systemic.core :as sys :refer [defsys]]
-   [compojure.route :as c.route]
-   [compojure.core :as c]
-   [plasma.core :as plasma]
    [plasma.server :as plasma.server]
-   [plasma.server.middleware :as plasma.middleware]
+   [plasma.server.interceptors :as plasma.interceptors]
    [doctor.config :as config]
-   ;; [doctor.db.core :as db]
    [doctor.time-literals-transit :as tlt]
    [doctor.ui.views.dock :as dock]
-   [doctor.ui.views.screenshots :as screenshots]))
+   [doctor.ui.views.screenshots :as screenshots]
+   [cognitect.transit :as transit]
+   [ring.adapter.undertow :as undertow]
+   [ring.adapter.undertow.websocket :as undertow.ws]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Tubes setup systems
+;; Plasma config
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defsys *transmitter*
-  "Pneumatic tube for transmitting data"
-  (tubes/transmitter))
+(defsys *sessions*
+  "Plasma sessions"
+  (atom {}))
 
-(defsys *tx*
-  "Function to transmit data to the provided tube"
-  (fn [tube event]
-    (tubes/dispatch *transmitter* tube event)))
-
-(defsys *dispatch-all*
-  (fn [event]
-    (tubes/dispatch *transmitter* :all event)))
-
-(comment
-  (sys/start!)
-  (*dispatch-all* [:my-event]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; *rx* event handling
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def plasma-handle-fn
-  (-> plasma.server/handle
-      (plasma.server.middleware/auto-require
-        (fn [_] (sys/start!)))))
-
-(defsys *rx*
-  "Receiver for handling web events"
-  :start
-  (tubes/receiver
-    (->
-      {:tube/on-create
-       (fn [tube _ev]
-         (assoc tube
-                :plasma/state (atom nil)
-                :plasma/resources (atom nil)))
-
-       :tube/on-destroy
-       (fn [tube _ev]
-         (binding [plasma/*state*     (:plasma/state tube)
-                   plasma/*resources* (:plasma/resources tube)]
-           (plasma/cleanup-resources!)))
-
-       :plasma/message
-       (fn [tube [_ msg-type req-id event args]]
-         (binding [plasma/*state*     (:plasma/state tube)
-                   plasma/*resources* (:plasma/resources tube)]
-           (let [send!    (bound-fn [resp] (*tx* tube resp))
-                 on-error (fn [e _ _]
-                            (log/error e "Error in plasma handler" {:event event}))]
-             ((plasma.server/receive!
-                plasma-handle-fn msg-type req-id event args)
-              send!
-              on-error))
-           tube))})))
+(defsys *plasma-server*
+  "Our plasma server bundle"
+  (plasma.server/make-server
+    {:session-atom *sessions*
+     :send-fn      #(undertow.ws/send %2 %1)
+     :on-error     #(log/warn (:error %) "Error in plasma handler" {:request %})
+     :transit-read-handlers
+     (merge transit/default-read-handlers
+            tlt/read-handlers)
+     :interceptors [(plasma.interceptors/auto-require
+                      #(do (log/info "Auto requiring namespace" {:namespace %})
+                           (systemic.core/start!)))
+                    (plasma.interceptors/load-metadata)]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Server
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(c/defroutes all-routes
-  (c/GET "/ws" [] (websocket-handler
-                    *rx* {}
-                    {:read-handlers  tlt/read-handlers
-                     :write-handlers tlt/write-handlers}))
-  (c/GET "/dock/update" []
-         (do
-           (println "hello /dock/update" (System/currentTimeMillis))
-           (dock/update-dock)
-           nil))
-  (c/GET "/screenshots/update" []
-         (do
-           (println "hello /screenshot/update" (System/currentTimeMillis))
-           (screenshots/update-screenshots)
-           nil))
-  (c.route/not-found "Not found"))
-
-
 (defsys *server*
-  :extra-deps
-  [*dispatch-all*
-   *rx*
-   dock/*workspaces-stream*
-   screenshots/*screenshots-stream*
-   ;; db/*conn*
-   ]
+  "Doctor webserver"
   :start
-  (let [port (:server-port config/*config*)]
-    (log/info "Starting *server* on port:" port)
-    (server/run-server all-routes {:port port}))
-  :stop (*server*))
+  (let [port (:server/port config/*config*)]
+    (log/info "Starting *server* on port" port)
+    (undertow/run-undertow
+      (fn [{:keys [uri] :as _req}]
+        (log/info "request" uri (System/currentTimeMillis))
+        ;; poor man's router
+        (cond
+          (= uri "/dock/update")
+          (do
+            (dock/update-dock)
+            {:status 200 :body "updated dock"})
+
+          (= uri "/screenshots/update")
+          (do
+            (screenshots/update-screenshots)
+            {:status 200 :body "updated screenshots"})
+
+          (= uri "/ws")
+          {:undertow/websocket
+           {:on-open    #(do (log/info "Client connected")
+                             (plasma.server/on-connect! *plasma-server* %))
+            :on-message #(plasma.server/on-message!
+                           *plasma-server*
+                           (:channel %)
+                           (:data %))
+            :on-close   #(plasma.server/on-disconnect!
+                           *plasma-server*
+                           (:ws-channel %))}}))
+      {:port             port
+       :session-manager? false
+       :websocket?       true}))
+  :stop
+  (.stop *server*))
 
 (comment
   @sys/*registry*
   (sys/stop!)
   (sys/start! `*server*)
-  (sys/start! `*rx*)
-
   (sys/restart! `*server*)
+  *server*
 
   (slurp "http://localhost:3334/dock/update")
-  (println "hi")
-  (slurp "http://localhost:3334/ws"))
+  (println "hi"))

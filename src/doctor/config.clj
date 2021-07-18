@@ -1,16 +1,13 @@
 (ns doctor.config
   (:require
+   [aero.core :as aero]
+   [clojure.java.io :as io]
    [systemic.core :as sys :refer [defsys]]))
 
-(def home "/home/russ")
+(defn ->config []
+  (aero/read-config (io/resource "config.edn")))
 
-(defsys *config*
-  :start
-  (->
-    {:prod (System/getenv "PROD")
-     :server-port
-     (or (some-> (System/getenv "SERVER_PORT") int) 3334)
+(comment
+  (->config))
 
-     :db-file                (str home "/russmatney/doctor/db/doctor-db-file")
-     :db-temp-migration-file (str home "/russmatney/doctor/db/doctor-db-migration-file")
-     :home-dir               (str home)}))
+(defsys *config* (->config))

@@ -5,15 +5,15 @@
    [nrepl.server :as nrepl]
    [cider.nrepl :as cider]
    [refactor-nrepl.middleware :as refactor-mw]
-   [doctor.server :as server])
+   [doctor.server :as server]
+   [doctor.config :as config])
   (:gen-class))
 
 (defsys *nrepl*
   :closure
   (let [nrepl-val (atom nil)
-        ;; TODO pull into config in resources/config.edn and aero
-        port      3336]
-    (log/info "nREPL start" {:port port})
+        port      (:nrepl/port config/*config*)]
+    (log/info "Starting Doctor backend *nrepl*" {:port port})
     (try
       (reset! nrepl-val (nrepl/start-server
                           :port port
