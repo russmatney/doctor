@@ -3,7 +3,7 @@
    [plasma.core :refer [defhandler defstream]]
    #?@(:clj [[systemic.core :refer [defsys] :as sys]
              [manifold.stream :as s]
-             ;; [clawe.screenshots :as clawe.screenshots]
+             [clawe.screenshots :as c.screenshots]
              [clawe.scratchpad :as scratchpad]
              [clawe.awesome :as c.awm]
              ]
@@ -24,8 +24,12 @@
      ;;   (filter :awesome/tag)
      ;;   (map #(dissoc % :rules/apply))
      ;;   )
-     [{:name "hi"}]
-     ))
+     (->>
+       (concat
+         [{:name          "Example item"
+           :file/filename "some filepath"}]
+         (c.screenshots/all-screenshots))
+       (take 5))))
 
 (defhandler get-screenshots []
   (active-screenshots))
@@ -65,6 +69,7 @@
    (defn use-screenshots []
      (let [screenshots (plasma.uix/state [])
            handle-resp (fn [new-items]
+                         (println "new-items" new-items)
                          (swap! screenshots
                                 (fn [items]
                                   (->>
@@ -72,7 +77,7 @@
                                       ;; TODO work around this keeping/merging with the 'old' ones
                                       ;; (or items [])
                                       new-items)
-                                    (w/distinct-by :screenshot/title)))))]
+                                    (w/distinct-by :file/filename)))))]
 
        (with-rpc [@connected/connected?] (get-screenshots) handle-resp)
        (with-stream [@connected/connected?] (screenshots-stream) handle-resp)
@@ -83,7 +88,7 @@
    (defn ->actions [item]
      (let [{:keys []} item]
        (->>
-         [{:action/label    "hide"
+         [{:action/label    "js/alert"
            :action/on-click #(js/alert item)}]
          (remove nil?)))))
 
@@ -92,7 +97,10 @@
    (defn screenshot-comp
      ([item] (screenshot-comp nil item))
      ([_opts item]
-      (let [{:keys []} item
+      (let [{:keys [name
+                    file/filename
+                    file/web-asset-path
+                    ]} item
             hovering?  (uix/state false)]
         [:div
          {:class
@@ -102,28 +110,34 @@
            "text-white"]
           :on-mouse-enter #(do (reset! hovering? true))
           :on-mouse-leave #(do (reset! hovering? false))}
+         (when web-asset-path
+           [:img {:src web-asset-path}])
+
          [:div
           {:class ["font-nes" "text-lg"]}
-          "screenshot"]
+          name]
 
-         (when @hovering?
-           [:div
-            (for [ax (->actions item)]
-              ^{:key (:action/label ax)}
-              [:div
-               {:class    ["cursor-pointer"
-                           "hover:text-yo-blue-300"]
-                :on-click (:action/on-click ax)}
-               (:action/label ax)])])]))))
+         [:div
+          filename]
+
+         [:div
+          (for [ax (->actions item)]
+            ^{:key (:action/label ax)}
+            [:div
+             {:class    ["cursor-pointer"
+                         "hover:text-yo-blue-300"]
+              :on-click (:action/on-click ax)}
+             (:action/label ax)])]]))))
 
 #?(:cljs
    (defn widget []
      (let [{:keys [items]} (use-screenshots)]
        [:div
-        {:class ["flex" "flex-row"
-                 "justify-center"
+        {:class ["flex" "flex-col"
                  "min-h-screen"
-                 "overflow-hidden"]}
+                 "overflow-hidden"
+                 "bg-yo-blue-700"
+                 ]}
         (for [[i it] (->> items (map-indexed vector))]
           ^{:key i}
           [screenshot-comp nil it])])))
