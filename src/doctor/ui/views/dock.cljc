@@ -170,11 +170,15 @@
           :icon  fa/music-solid}
 
          (= "firefox" class)
-         {:color "text-city-red-300"
+         {:color "text-city-green-400"
+          :icon  fa4/firefox}
+
+         (= "firefoxdeveloperedition" class)
+         {:color "text-city-green-600"
           :icon  fa4/firefox}
 
          (= "Slack" class)
-         {:color "text-city-red-400"
+         {:color "text-city-green-400"
           :icon  fa4/slack}
 
          :else
