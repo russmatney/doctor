@@ -24,7 +24,7 @@
                     :file/filename "some filepath"}]
        (->>
          (conj all example)
-         (take 5)
+         (take 30)
          (into []))
        )))
 
@@ -76,8 +76,8 @@
                                       new-items)
                                     (w/distinct-by :file/filename)))))]
 
-       (with-rpc [@connected/connected?] (get-screenshots) handle-resp)
-       (with-stream [@connected/connected?] (screenshots-stream) handle-resp)
+       (with-rpc [] (get-screenshots) handle-resp)
+       (with-stream [] (screenshots-stream) handle-resp)
 
        {:items @screenshots})))
 
@@ -101,7 +101,7 @@
             hovering?  (uix/state false)]
         [:div
          {:class
-          ["m-1" "p-4" "mt-auto"
+          ["m-1" "p-4"
            "border" "border-city-blue-600"
            "bg-yo-blue-700"
            "text-white"]
@@ -109,14 +109,15 @@
           :on-mouse-leave #(do (reset! hovering? false))}
          (when web-asset-path
            [:img {:src   web-asset-path
-                  :class ["max-w-6xl"]}])
+                  :class ["max-w-xl"
+                          "max-h-72"]}])
 
-         [:div
-          {:class ["font-nes" "text-lg"]}
-          name]
+         ;; [:div
+         ;;  {:class ["font-nes" "text-lg"]}
+         ;;  name]
 
-         [:div
-          filename]
+         ;; [:div
+         ;;  filename]
 
          [:div
           (for [ax (->actions item)]
@@ -131,7 +132,7 @@
    (defn widget []
      (let [{:keys [items]} (use-screenshots)]
        [:div
-        {:class ["flex" "flex-col"
+        {:class ["flex" "flex-row" "flex-wrap"
                  "min-h-screen"
                  "overflow-hidden"
                  "bg-yo-blue-700"
