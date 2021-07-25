@@ -262,36 +262,40 @@
            "rounded"
            "border-opacity-50"
            "bg-yo-blue-800"
-           "bg-opacity-50"
-           "text-white"
-           ;; "transform"
-           ;; "hover:scale-110"
-           ;; "duration-300"
-           ]
+           (cond
+             selected "bg-opacity-60"
+             :else    "bg-opacity-10")
+           "text-white"]
           :on-mouse-enter #(do (reset! hovering? true)
                                (bring-dock-above))
           :on-mouse-leave #(do (reset! hovering? false)
                                (push-dock-below))}
-         [:div
-          {:class ["flex" "flex-row"
-                   "items-center"]}
-          [client-icons clients]
+         (let [show-name (or @hovering? (not scratchpad) urgent selected (#{0} (count clients)))]
+           [:div
+            {:class ["flex" "flex-row"
+                     "items-center"]}
+            [client-icons clients]
 
-          (when (or @hovering? (not scratchpad) urgent selected (#{0} (count clients)))
             [:div
-             {:class ["font-nes" "text-lg" "px-2" "pl-3"
+             {:class ["font-nes" "text-lg"
+                      (when show-name "px-2")
+                      (when show-name "pl-3")
+                      (when-not show-name "w-0")
+                      "transition-all"
+
                       (cond
                         urgent   "text-city-red-400"
                         selected "text-city-orange-400"
                         color    ""
                         :else    "text-yo-blue-300")]
               :style (when (and (not selected) (not urgent) color) {:color color})}
-             title
+             (when show-name title)
 
-             (when (or @hovering? (#{0} (count clients)) (not scratchpad))
+             (let [show (and show-name (or @hovering? (#{0} (count clients)) (not scratchpad)))]
                [:span
-                {:class ["pl-2"]}
-                (str "(" index ")")])])]
+                {:class [(when show "pl-2")]}
+                (when show
+                  (str "(" index ")"))])]])
 
          (when @hovering?
            (str "(" index ")"))
