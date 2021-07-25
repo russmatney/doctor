@@ -204,56 +204,62 @@
            {:icon octicons/question16})))))
 
 #?(:cljs
-   (defn client-icons [clients]
-     (when (seq clients)
-       [:div
-        {:class ["flex" "flex-row"]}
-        (for [c (->> clients
-                     ;; (remove (comp #(= "clover/doctor-dock" %) :name))
-                     )]
-          (let [c-name                   (->> c :name (take 15) (apply str))
-                {:keys [urgent focused]} c
-                {:keys [color icon src]} (client->icon c)]
-            ^{:key (:window c)}
-            [:div
-             {:on-click #(js/alert c)
-              :class    ["flex" "flex-row" "items-center"]}
+   (defn client-icons
+     ([clients] (client-icons clients {}))
+     ([clients {:client/keys [client-hovered client-unhovered]}]
+      (when (seq clients)
+        [:div
+         {:class ["flex" "flex-row"]}
+         (for [c (->> clients
+                      ;; (remove (comp #(= "clover/doctor-dock" %) :name))
+                      )]
+           (let [c-name                   (->> c :name (take 15) (apply str))
+                 {:keys [urgent focused]} c
+                 {:keys [color icon src]} (client->icon c)]
+             ^{:key (:window c)}
              [:div
-              {:class [(cond
-                         focused "text-city-orange-400"
-                         urgent  "text-city-red-400"
-                         color   color
-                         :else   "text-city-blue-400")
+              {
+               :on-mouse-over #(do (client-hovered c))
+               :on-mouse-out  #(do (client-unhovered c))
+               :class         ["flex" "flex-row" "items-center"]}
+              [:div
+               {:class [(cond
+                          focused "text-city-orange-400"
+                          urgent  "text-city-red-400"
+                          color   color
+                          :else   "text-city-blue-400")
 
-                       "text-3xl"
-                       "p-2"
-                       "border"
-                       "rounded"
-                       (cond focused "border-city-orange-400")
-                       (cond focused "border-opacity-70"
-                             :else   "border-opacity-0")]}
-              (cond src   [:img {:class ["w-16"]
-                                 :src   src}]
-                    icon  [:div {:class ["text-6xl"]} icon]
-                    :else c-name)]]))])))
+                        "text-3xl"
+                        "p-2"
+                        "border"
+                        "rounded"
+                        (cond focused "border-city-orange-400")
+                        (cond focused "border-opacity-70"
+                              :else   "border-opacity-0")]}
+               (cond src   [:img {:class ["w-16"]
+                                  :src   src}]
+                     icon  [:div {:class ["text-6xl"]} icon]
+                     :else c-name)]]))]))))
 
 #?(:cljs
    (defn workspace-comp
      ([wsp] (workspace-comp nil wsp))
-     ([_opts wsp]
+     ([{:as             opts
+        :client/keys    [hovered-client]
+        :workspace/keys [hovered-workspace
+                         workspace-hovered
+                         workspace-unhovered
+                         ]} wsp]
       (let [{:keys [workspace/title
-                    git/repo
-                    workspace/directory
                     workspace/color
-                    workspace/title-hiccup
                     awesome/index
                     workspace/scratchpad
                     awesome/clients
                     awesome/selected
                     awesome/urgent
                     ]} wsp
-            dir-path   (string/replace (or repo directory "") "/home/russ" "~")
-            hovering?  (uix/state false)]
+            hovering?  (= @hovered-workspace wsp)
+            ]
         [:div
          {:class
           ["m-1" "p-2" "mt-auto"
@@ -266,15 +272,15 @@
              selected "bg-opacity-60"
              :else    "bg-opacity-10")
            "text-white"]
-          :on-mouse-enter #(do (reset! hovering? true)
-                               (bring-dock-above))
-          :on-mouse-leave #(do (reset! hovering? false)
-                               (push-dock-below))}
-         (let [show-name (or @hovering? (not scratchpad) urgent selected (#{0} (count clients)))]
+          :on-mouse-enter #(do (bring-dock-above)
+                               (workspace-hovered wsp))
+          :on-mouse-leave #(do (push-dock-below)
+                               (workspace-unhovered wsp))}
+         (let [show-name (or hovering? (not scratchpad) urgent selected (#{0} (count clients)))]
            [:div
             {:class ["flex" "flex-row"
                      "items-center"]}
-            [client-icons clients]
+            [client-icons clients opts]
 
             [:div
              {:class ["font-nes" "text-lg"
@@ -291,32 +297,13 @@
               :style (when (and (not selected) (not urgent) color) {:color color})}
              (when show-name title)
 
-             (let [show (and show-name (or @hovering? (#{0} (count clients)) (not scratchpad)))]
+             (let [show (and show-name (or hovering? (#{0} (count clients)) (not scratchpad)))]
                [:span
                 {:class [(when show "pl-2")]}
                 (when show
                   (str "(" index ")"))])]])
 
-         (when @hovering?
-           (str "(" index ")"))
-
-         (when @hovering?
-           [:div
-            (when scratchpad
-              (str "#scratchpad"))
-
-            (when repo
-              (str "#repo"))])
-
-         (when @hovering?
-           (when title-hiccup
-             [:div title-hiccup]))
-
-         (when @hovering?
-           (when dir-path
-             [:div dir-path]))
-
-         (when @hovering?
+         (when hovering?
            [:div
             (for [ax (->actions wsp)]
               ^{:key (:action/label ax)}
@@ -328,12 +315,62 @@
 
 #?(:cljs
    (defn widget []
-     (let [{:keys [items]} (use-workspaces)]
+     (let [hovered-client    (uix/state nil)
+           hovered-workspace (uix/state nil)
+           {:keys [items]}   (use-workspaces)]
        [:div
         {:class ["flex" "flex-row"
-                 "justify-center"
+                 "justify-between"
                  "min-h-screen"
+                 "max-h-screen"
                  "overflow-hidden"]}
-        (for [[i it] (->> items (map-indexed vector))]
-          ^{:key i}
-          [workspace-comp nil it])])))
+
+        ;; left side
+        [:div
+         {:class ["m-1" "p-4" "mt-auto"
+                  "bg-yo-blue-500"
+                  "border-city-blue-400"
+                  "rounded"
+                  "text-white"
+                  "w-1/5"]}
+
+         (when @hovered-workspace
+           (let [{:keys [workspace/directory
+                         git/repo]} @hovered-workspace
+                 dir-path           (string/replace (or repo directory "") "/home/russ" "~")]
+             ;; (->>
+             ;;   @hovered-workspace
+             ;;   (map (fn [[k v]] (str "[" k ": " v "] ")))
+             ;;   (concat ["[dir-path: " dir-path "]"])
+             ;;   (apply str))
+             ))
+
+         (when @hovered-client
+           (->>
+             @hovered-client
+             (map (fn [[k v]] (str "[" k " " v "] ")))
+             (apply str)))]
+
+        ;; workspaces (middle)
+        [:div
+         {:class ["flex" "flex-row"
+                  "justify-center"
+                  "overflow-hidden"]}
+         (for [[i it] (->> items (map-indexed vector))]
+           ^{:key i}
+           [workspace-comp
+            {:workspace/hovered-workspace   hovered-workspace
+             :workspace/workspace-hovered   (fn [w] (reset! hovered-workspace w))
+             :workspace/workspace-unhovered (fn [_] (reset! hovered-workspace nil))
+             :client/hovered-client         hovered-client
+             :client/client-hovered         (fn [c] (reset! hovered-client c))
+             :client/client-unhovered       (fn [_] (reset! hovered-client nil))}
+            it])]
+
+        ;; right side
+        [:div
+         {:class ["m-1" "p-4" "mt-auto"
+                  "bg-yo-blue-500"
+                  "border-city-blue-400"
+                  "rounded"
+                  "w-1/5"]}]])))
