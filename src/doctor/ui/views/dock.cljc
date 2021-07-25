@@ -154,30 +154,25 @@
        (cond
          (= "Emacs" class)
          {:color "text-city-blue-400"
-          :icon  [:img {:class ["w-8"]
-                        :src   "/assets/candy-icons/emacs.svg"}]}
+          :src   "/assets/candy-icons/emacs.svg"}
 
          (= "Alacritty" class)
          {:color "text-city-green-600"
-          ;; :icon  [:img {:class ["w-8"]
-          ;;               :src   "/assets/candy-icons/Alacritty.svg"}]
+          ;; :icon  [:img {:src   "/assets/candy-icons/Alacritty.svg"}]
           :icon  octicons/terminal16
           }
 
          (= "Spotify" class)
          {:color "text-city-green-400"
-          :icon  [:img {:class ["w-8"]
-                        :src   "/assets/candy-icons/spotify.svg"}]}
+          :src   "/assets/candy-icons/spotify.svg"}
 
          (= "firefox" class)
          {:color "text-city-green-400"
-          :icon  [:img {:class ["w-8"]
-                        :src   "/assets/candy-icons/firefox.svg"}]}
+          :src   "/assets/candy-icons/firefox.svg"}
 
          (= "firefoxdeveloperedition" class)
          {:color "text-city-green-600"
-          :icon  [:img {:class ["w-8"]
-                        :src   "/assets/candy-icons/firefox-nightly.svg"}]}
+          :src   "/assets/candy-icons/firefox-nightly.svg"}
 
          (= "Slack" class)
          {:color "text-city-green-400"
@@ -185,22 +180,23 @@
 
          (= "Rofi" class)
          {:color "text-city-green-400"
-          :icon  [:img {:class ["w-8"]
-                        :src   "/assets/candy-icons/kmenuedit.svg"}]}
+          :src   "/assets/candy-icons/kmenuedit.svg"}
 
          (= "1Password" class)
          {:color "text-city-green-400"
-          :icon  [:img {:class ["w-8"]
-                        :src   "/assets/candy-icons/1password.svg"}]}
+          :src   "/assets/candy-icons/1password.svg"}
 
          (= "zoom" class)
          {:color "text-city-green-400"
-          :icon  [:img {:class ["w-8"]
-                        :src   "/assets/candy-icons/Zoom.svg"}]}
+          :src   "/assets/candy-icons/Zoom.svg"}
 
          (= "clover/doctor-dock" name)
          {:color "text-city-blue-600"
           :icon  mdi/doctor}
+
+         (string/includes? name "Developer Tools")
+         {:color "text-city-blue-600"
+          :src   "/assets/candy-icons/firefox-developer-edition.svg"}
 
          :else
          (do
@@ -217,7 +213,7 @@
                      )]
           (let [c-name                   (->> c :name (take 15) (apply str))
                 {:keys [urgent focused]} c
-                {:keys [color icon]}     (client->icon c)]
+                {:keys [color icon src]} (client->icon c)]
             ^{:key (:window c)}
             [:div
              {:on-click #(js/alert c)
@@ -228,9 +224,18 @@
                          urgent  "text-city-red-400"
                          color   color
                          :else   "text-city-blue-400")
+
                        "text-3xl"
-                       "p-2"]}
-              (or icon c-name)]]))])))
+                       "p-2"
+                       "border"
+                       "rounded"
+                       (cond focused "border-city-orange-400")
+                       (cond focused "border-opacity-70"
+                             :else   "border-opacity-0")]}
+              (cond src   [:img {:class ["w-16"]
+                                 :src   src}]
+                    icon  [:div {:class ["text-6xl"]} icon]
+                    :else c-name)]]))])))
 
 #?(:cljs
    (defn workspace-comp
@@ -251,10 +256,13 @@
             hovering?  (uix/state false)]
         [:div
          {:class
-          ["m-1" "p-4" "mt-auto"
-           "border" "border-city-blue-600"
-           "bg-yo-blue-700"
-           "bg-opacity-5"
+          ["m-1" "p-2" "mt-auto"
+           "border"
+           "border-city-blue-600"
+           "rounded"
+           "border-opacity-50"
+           "bg-yo-blue-800"
+           "bg-opacity-50"
            "text-white"
            ;; "transform"
            ;; "hover:scale-110"
@@ -271,7 +279,7 @@
 
           (when (or @hovering? (not scratchpad) urgent selected (#{0} (count clients)))
             [:div
-             {:class ["font-nes" "text-lg" "px-2"
+             {:class ["font-nes" "text-lg" "px-2" "pl-3"
                       (cond
                         urgent   "text-city-red-400"
                         selected "text-city-orange-400"
@@ -281,7 +289,9 @@
              title
 
              (when (or @hovering? (#{0} (count clients)) (not scratchpad))
-               (str " (" index ")"))])]
+               [:span
+                {:class ["pl-2"]}
+                (str "(" index ")")])])]
 
          (when @hovering?
            (str "(" index ")"))
