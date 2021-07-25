@@ -2,7 +2,6 @@
   (:require
    [plasma.client]
    [doctor.time-literals-transit :as tlt]
-   [doctor.ui.connected :as connected]
    [taoensso.timbre :as log]
    [uix.dom.alpha :as uix.dom]
    [time-literals.data-readers]
@@ -66,17 +65,14 @@
 
 (defn on-close []
   (log/info "Connection with server closed")
-  ;; (connected/reset false)
   )
 
 (defn on-error []
   (log/info "Connection with server error")
-  ;; (connected/reset false)
   )
 
 (defn on-open []
   (log/info "Connection with server open")
-  ;; (connected/reset true)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

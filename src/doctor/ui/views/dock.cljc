@@ -150,27 +150,34 @@
      ;; TODO namespace client keys
      ;; TODO get filepaths for class == emacs clients
      ;; i.e. emacs clients could have types for clojure project, react/python project, org file, etc
-     (let [{:keys [class]} client]
+     (let [{:keys [class name]} client]
        (cond
          (= "Emacs" class)
          {:color "text-city-blue-400"
-          :icon  octicons/beaker}
+          :icon  [:img {:class ["w-8"]
+                        :src   "/assets/candy-icons/emacs.svg"}]}
 
          (= "Alacritty" class)
          {:color "text-city-green-600"
-          :icon  octicons/terminal16}
+          ;; :icon  [:img {:class ["w-8"]
+          ;;               :src   "/assets/candy-icons/Alacritty.svg"}]
+          :icon  octicons/terminal16
+          }
 
          (= "Spotify" class)
          {:color "text-city-green-400"
-          :icon  fa/music-solid}
+          :icon  [:img {:class ["w-8"]
+                        :src   "/assets/candy-icons/spotify.svg"}]}
 
          (= "firefox" class)
          {:color "text-city-green-400"
-          :icon  fa4/firefox}
+          :icon  [:img {:class ["w-8"]
+                        :src   "/assets/candy-icons/firefox.svg"}]}
 
          (= "firefoxdeveloperedition" class)
          {:color "text-city-green-600"
-          :icon  fa4/firefox}
+          :icon  [:img {:class ["w-8"]
+                        :src   "/assets/candy-icons/firefox-nightly.svg"}]}
 
          (= "Slack" class)
          {:color "text-city-green-400"
@@ -178,10 +185,27 @@
 
          (= "Rofi" class)
          {:color "text-city-green-400"
-          :icon  octicons/terminal}
+          :icon  [:img {:class ["w-8"]
+                        :src   "/assets/candy-icons/kmenuedit.svg"}]}
+
+         (= "1Password" class)
+         {:color "text-city-green-400"
+          :icon  [:img {:class ["w-8"]
+                        :src   "/assets/candy-icons/1password.svg"}]}
+
+         (= "zoom" class)
+         {:color "text-city-green-400"
+          :icon  [:img {:class ["w-8"]
+                        :src   "/assets/candy-icons/Zoom.svg"}]}
+
+         (= "clover/doctor-dock" name)
+         {:color "text-city-blue-600"
+          :icon  mdi/doctor}
 
          :else
-         (println "missing icon for client" client)))))
+         (do
+           (println "missing icon for client" client)
+           {:icon octicons/question16})))))
 
 #?(:cljs
    (defn client-icons [clients]
@@ -189,18 +213,21 @@
        [:div
         {:class ["flex" "flex-row"]}
         (for [c (->> clients
-                     (remove (comp #(= "clover/doctor-dock" %) :name)))]
-          (let [c-name               (->> c :name (take 15) (apply str))
-                {:keys [urgent]}     c
-                {:keys [color icon]} (client->icon c)]
+                     ;; (remove (comp #(= "clover/doctor-dock" %) :name))
+                     )]
+          (let [c-name                   (->> c :name (take 15) (apply str))
+                {:keys [urgent focused]} c
+                {:keys [color icon]}     (client->icon c)]
             ^{:key (:window c)}
             [:div
              {:on-click #(js/alert c)
               :class    ["flex" "flex-row" "items-center"]}
              [:div
-              {:class [(cond urgent "text-city-red-400"
-                             color  color
-                             :else  "text-city-blue-400")
+              {:class [(cond
+                         focused "text-city-orange-400"
+                         urgent  "text-city-red-400"
+                         color   color
+                         :else   "text-city-blue-400")
                        "text-3xl"
                        "p-2"]}
               (or icon c-name)]]))])))
@@ -220,17 +247,19 @@
                     awesome/selected
                     awesome/urgent
                     ]} wsp
-            dir-path   (string/replace (or repo directory) "/home/russ" "~")
+            dir-path   (string/replace (or repo directory "") "/home/russ" "~")
             hovering?  (uix/state false)]
         [:div
          {:class
           ["m-1" "p-4" "mt-auto"
            "border" "border-city-blue-600"
            "bg-yo-blue-700"
+           "bg-opacity-5"
            "text-white"
-           "transform"
-           "hover:scale-110"
-           "duration-300"]
+           ;; "transform"
+           ;; "hover:scale-110"
+           ;; "duration-300"
+           ]
           :on-mouse-enter #(do (reset! hovering? true)
                                (bring-dock-above))
           :on-mouse-leave #(do (reset! hovering? false)
@@ -240,18 +269,19 @@
                    "items-center"]}
           [client-icons clients]
 
-          [:div
-           {:class ["font-nes" "text-lg" "px-2"
-                    (cond
-                      urgent   "text-city-red-400"
-                      selected "text-city-orange-400"
-                      color    ""
-                      :else    "text-yo-blue-300")]
-            :style (when (and (not selected) (not urgent) color) {:color color})}
-           (when (#{0} (count clients))
-             (str "(" index ") "))
+          (when (or @hovering? (not scratchpad) urgent selected (#{0} (count clients)))
+            [:div
+             {:class ["font-nes" "text-lg" "px-2"
+                      (cond
+                        urgent   "text-city-red-400"
+                        selected "text-city-orange-400"
+                        color    ""
+                        :else    "text-yo-blue-300")]
+              :style (when (and (not selected) (not urgent) color) {:color color})}
+             title
 
-           title]]
+             (when (or @hovering? (#{0} (count clients)) (not scratchpad))
+               (str " (" index ")"))])]
 
          (when @hovering?
            (str "(" index ")"))
