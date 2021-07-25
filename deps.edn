@@ -7,7 +7,7 @@
   {:git/url "https://github.com/teknql/wing.git"
    :sha     "5c0078739c94e93ab9126f65ed243a6a74aa16d4"}
 
-  cider/cider-nrepl             {:mvn/version "0.25.9"}
+  cider/cider-nrepl             {:mvn/version "0.26.0"}
   refactor-nrepl/refactor-nrepl {:mvn/version "2.5.1"}
 
   ;; core logic
