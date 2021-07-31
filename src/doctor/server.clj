@@ -42,6 +42,7 @@
   "Doctor webserver"
   :extra-deps
   [dock/*workspaces-stream*
+   dock/*dock-metadata-stream*
    screenshots/*screenshots-stream*]
   :start
   (let [port (:server/port config/*config*)]
@@ -54,6 +55,7 @@
           (= uri "/dock/update")
           (do
             (dock/update-dock)
+            (dock/update-dock-metadata)
             {:status 200 :body "updated dock"})
 
           (= uri "/screenshots/update")

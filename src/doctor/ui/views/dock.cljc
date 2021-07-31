@@ -6,6 +6,7 @@
              [clawe.workspaces :as clawe.workspaces]
              [clawe.scratchpad :as scratchpad]
              [clawe.awesome :as c.awm]
+             [ralphie.pulseaudio :as r.pulseaudio]
              ]
        :cljs [[wing.core :as w]
               [clojure.string :as string]
@@ -18,7 +19,7 @@
               ])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; API
+;; Active workspaces
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:clj
@@ -58,9 +59,51 @@
      (update-dock)
      ))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Misc metadata
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#?(:clj
+   (defn build-dock-metadata []
+     {:muted (r.pulseaudio/input-muted?)}))
+
+(defhandler get-dock-metadata []
+  (build-dock-metadata))
+
+#?(:clj
+   (defsys *dock-metadata-stream*
+     :start (s/stream)
+     :stop (s/close! *dock-metadata-stream*)))
+
+#?(:clj
+   (comment
+     (sys/start! `*dock-metadata-stream*)))
+
+(defstream dock-metadata-stream [] *dock-metadata-stream*)
+
+#?(:clj
+   (defn update-dock-metadata []
+     (println "pushing to dock-metadata stream (updating dock-metadata)!")
+     (s/put! *dock-metadata-stream* (build-dock-metadata))))
+
+#?(:clj
+   (comment
+     (->>
+       (build-dock-metadata)
+       (sort-by :awesome/index)
+       first)
+
+     (update-dock-metadata)
+     ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Workspace commands
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defhandler hide-workspace [item]
   (println "hide wsp" (:name item))
   (->
+    ;; TODO support non scratchpad workspaces
     item
     ;; :name
     ;; clawe.workspaces/for-name
@@ -77,6 +120,10 @@
     clawe.workspaces/merge-awm-tags
     scratchpad/toggle-scratchpad)
   (update-dock))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Dock behavior
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defhandler bring-dock-above []
   (println "bring dock above")
@@ -102,7 +149,7 @@
           )))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Frontend
+;; Frontend Data contexts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
@@ -123,6 +170,20 @@
        (with-stream [] (workspaces-stream) handle-resp)
 
        {:items @workspaces})))
+
+#?(:cljs
+   (defn use-dock-metadata []
+     (let [dock-metadata (plasma.uix/state [])
+           handle-resp   #(reset! dock-metadata %)]
+
+       (with-rpc [] (get-dock-metadata) handle-resp)
+       (with-stream [] (dock-metadata-stream) handle-resp)
+
+       @dock-metadata)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Frontend Components
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
    (defn ->actions [item]
@@ -159,8 +220,7 @@
          (= "Alacritty" class)
          {:color "text-city-green-600"
           ;; :icon  [:img {:src   "/assets/candy-icons/Alacritty.svg"}]
-          :icon  octicons/terminal16
-          }
+          :icon  octicons/terminal16}
 
          (= "Spotify" class)
          {:color "text-city-green-400"
@@ -174,9 +234,17 @@
          {:color "text-city-green-600"
           :src   "/assets/candy-icons/firefox-nightly.svg"}
 
+         (= "Google-chrome" class)
+         {:color "text-city-green-600"
+          :src   "/assets/candy-icons/google-chrome.svg"}
+
+         (string/includes? name "Slack call")
+         {:color "text-city-green-600"
+          :src   "/assets/candy-icons/shutter.svg"}
+
          (= "Slack" class)
          {:color "text-city-green-400"
-          :icon  fa4/slack}
+          :src   "/assets/candy-icons/slack.svg"}
 
          (= "Rofi" class)
          {:color "text-city-green-400"
@@ -317,7 +385,9 @@
    (defn widget []
      (let [hovered-client    (uix/state nil)
            hovered-workspace (uix/state nil)
-           {:keys [items]}   (use-workspaces)]
+           {:keys [items]}   (use-workspaces)
+           metadata          (use-dock-metadata)]
+       (println "metadata" metadata)
        [:div
         {:class ["flex" "flex-row"
                  "justify-between"
@@ -373,4 +443,15 @@
                   "bg-yo-blue-500"
                   "border-city-blue-400"
                   "rounded"
-                  "w-1/5"]}]])))
+                  "w-1/5"
+                  "text-white"
+                  ]}
+
+         [:div
+          {:class ["text-right"]}
+          (when metadata
+            (->>
+              metadata
+              (map (fn [[k v]] (str "[" k " " v "] ")))
+              (apply str)))]
+         ]])))
