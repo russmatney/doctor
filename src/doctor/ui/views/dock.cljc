@@ -5,7 +5,7 @@
              [manifold.stream :as s]
              [clawe.workspaces :as clawe.workspaces]
              [clawe.scratchpad :as scratchpad]
-             [clawe.awesome :as c.awm]
+             [ralphie.awesome :as awm]
              [ralphie.pulseaudio :as r.pulseaudio]
              ]
        :cljs [[wing.core :as w]
@@ -26,7 +26,7 @@
    (defn active-workspaces []
      (->>
        (clawe.workspaces/all-workspaces)
-       (filter :awesome/tag)
+       (filter :awesome.tag/name)
        (map #(dissoc % :rules/apply))) ))
 
 (defhandler get-workspaces []
@@ -53,7 +53,7 @@
    (comment
      (->>
        (active-workspaces)
-       (sort-by :awesome/index)
+       (sort-by :awesome.tag/index)
        first)
 
      (update-dock)
@@ -90,7 +90,7 @@
    (comment
      (->>
        (build-dock-metadata)
-       (sort-by :awesome/index)
+       (sort-by :awesome.tag/index)
        first)
 
      (update-dock-metadata)
@@ -127,7 +127,7 @@
 
 (defhandler bring-dock-above []
   (println "bring dock above")
-  (c.awm/awm-fnl
+  (awm/awm-fnl
     '(->
        (client.get)
        (lume.filter (fn [c] (= c.name "clover/doctor-dock")))
@@ -138,7 +138,7 @@
 
 (defhandler push-dock-below []
   (println "push dock below")
-  (c.awm/awm-fnl
+  (awm/awm-fnl
     '(->
        (client.get)
        (lume.filter (fn [c] (= c.name "clover/doctor-dock")))
@@ -157,14 +157,14 @@
      (let [workspaces  (plasma.uix/state [])
            handle-resp (fn [new-wsps]
                          (swap! workspaces
-                                (fn [wsps]
+                                (fn [_wsps]
                                   (->>
                                     (concat
                                       ;; TODO work around this keeping the 'old' ones
                                       ;; (or wsps [])
                                       new-wsps)
                                     (w/distinct-by :workspace/title)
-                                    (sort-by :awesome/index)))))]
+                                    (sort-by :awesome.tag/index)))))]
 
        (with-rpc [] (get-workspaces) handle-resp)
        (with-stream [] (workspaces-stream) handle-resp)
@@ -187,16 +187,18 @@
 
 #?(:cljs
    (defn ->actions [item]
-     (let [{:keys [workspace/title
-                   git/repo
-                   workspace/directory
-                   workspace/color
-                   workspace/title-hiccup
-                   awesome/index
-                   workspace/scratchpad
-                   awesome/clients
-                   awesome/urgent
-                   awesome/selected]} item]
+     (let [{:keys [
+                   ;; workspace/title
+                   ;; git/repo
+                   ;; workspace/directory
+                   ;; workspace/color
+                   ;; workspace/title-hiccup
+                   ;; workspace/scratchpad
+                   ;; awesome.tag/index
+                   ;; awesome.tag/clients
+                   ;; awesome.tag/urgent
+                   awesome.tag/selected
+                   ]} item]
        (->>
          [(when selected
             {:action/label    "hide"
@@ -211,7 +213,7 @@
      ;; TODO namespace client keys
      ;; TODO get filepaths for class == emacs clients
      ;; i.e. emacs clients could have types for clojure project, react/python project, org file, etc
-     (let [{:keys [class name]} client]
+     (let [{:awesome.client/keys [class name]} client]
        (cond
          (= "Emacs" class)
          {:color "text-city-blue-400"
@@ -279,11 +281,11 @@
         [:div
          {:class ["flex" "flex-row"]}
          (for [c (->> clients
-                      ;; (remove (comp #(= "clover/doctor-dock" %) :name))
+                      ;; (remove (comp #(= "clover/doctor-dock" %) :awesome.client/name))
                       )]
-           (let [c-name                   (->> c :name (take 15) (apply str))
-                 {:keys [urgent focused]} c
-                 {:keys [color icon src]} (client->icon c)]
+           (let [c-name                                  (->> c :awesome.client/name (take 15) (apply str))
+                 {:awesome.client/keys [urgent focused]} c
+                 {:keys [color icon src]}                (client->icon c)]
              ^{:key (:window c)}
              [:div
               {
@@ -320,11 +322,11 @@
                          ]} wsp]
       (let [{:keys [workspace/title
                     workspace/color
-                    awesome/index
+                    awesome.tag/index
                     workspace/scratchpad
-                    awesome/clients
-                    awesome/selected
-                    awesome/urgent
+                    awesome.tag/clients
+                    awesome.tag/selected
+                    awesome.tag/urgent
                     ]} wsp
             hovering?  (= @hovered-workspace wsp)
             ]
