@@ -3,13 +3,13 @@
    [plasma.client]
    [doctor.time-literals-transit :as tlt]
    [taoensso.timbre :as log]
-   [uix.dom.alpha :as uix.dom]
    [time-literals.data-readers]
    [time-literals.read-write]
    [tick.timezone]
    [tick.locale-en-us]
    [wing.uix.router :as router]
    [uix.core.alpha :as uix]
+   [uix.dom.alpha :as uix.dom]
 
    [doctor.ui.views.dock :as views.dock]
    [doctor.ui.views.screenshots :as views.screenshots]))

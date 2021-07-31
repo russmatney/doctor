@@ -3,13 +3,8 @@
    [plasma.core :refer [defhandler defstream]]
    #?@(:clj [[systemic.core :refer [defsys] :as sys]
              [manifold.stream :as s]
-             [clawe.screenshots :as c.screenshots]
-             [clawe.scratchpad :as scratchpad]
-             [clawe.awesome :as c.awm]
-             ]
+             [clawe.screenshots :as c.screenshots]]
        :cljs [[wing.core :as w]
-              [doctor.ui.connected :as connected]
-              [clojure.string :as string]
               [uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]])))
 
