@@ -375,14 +375,15 @@
                  {:class [(when show "pl-2")]}
                  (when show
                    (str "(" index ")"))])]
-             [:div
-              {:class ["text-xs" "pt-2" "flex-wrap" "flex-col"
-                       (cond
-                         (or urgent (not selected)) "text-city-red-300"
-                         :else                      "text-yo-blue-300")]}
-              [:div (when needs-push? "#needs-push")]
-              [:div (when needs-pull? "#needs-pull")]
-              [:div (when dirty? "#dirty")]]]])
+             (when (or needs-push? needs-pull? dirty?)
+               [:div
+                {:class ["text-xs" "pt-2" "flex-wrap" "flex-col"
+                         (cond
+                           (or urgent (not selected)) "text-city-red-300"
+                           :else                      "text-yo-blue-300")]}
+                [:div (when needs-push? "#needs-push")]
+                [:div (when needs-pull? "#needs-pull")]
+                [:div (when dirty? "#dirty")]])]])
 
          (when hovering?
            [:div
