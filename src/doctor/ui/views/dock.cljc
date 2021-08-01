@@ -6,8 +6,7 @@
              [clawe.workspaces :as clawe.workspaces]
              [clawe.scratchpad :as scratchpad]
              [ralphie.awesome :as awm]
-             [ralphie.pulseaudio :as r.pulseaudio]
-             ]
+             [ralphie.pulseaudio :as r.pulseaudio]]
        :cljs [[wing.core :as w]
               [clojure.string :as string]
               [uix.core.alpha :as uix]
@@ -15,8 +14,7 @@
               [hiccup-icons.octicons :as octicons]
               [hiccup-icons.fa :as fa]
               [hiccup-icons.fa4 :as fa4]
-              [hiccup-icons.mdi :as mdi]
-              ])))
+              [hiccup-icons.mdi :as mdi]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Active workspaces
@@ -27,7 +25,8 @@
      (->>
        (clawe.workspaces/all-workspaces)
        (filter :awesome.tag/name)
-       (map #(dissoc % :rules/apply))) ))
+       (map clawe.workspaces/apply-git-status)
+       (map #(dissoc % :rules/apply)))))
 
 (defhandler get-workspaces []
   (active-workspaces))
@@ -39,8 +38,7 @@
 
 #?(:clj
    (comment
-     (sys/start! `*workspaces-stream*)
-     ))
+     (sys/start! `*workspaces-stream*)))
 
 (defstream workspaces-stream [] *workspaces-stream*)
 
@@ -56,8 +54,7 @@
        (sort-by :awesome.tag/index)
        first)
 
-     (update-dock)
-     ))
+     (update-dock)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Misc metadata
@@ -327,6 +324,9 @@
                     awesome.tag/clients
                     awesome.tag/selected
                     awesome.tag/urgent
+                    git/dirty?
+                    git/needs-push?
+                    git/needs-pull?
                     ]} wsp
             hovering?  (= @hovered-workspace wsp)
             ]
@@ -353,7 +353,8 @@
             [client-icons clients opts]
 
             [:div
-             {:class ["font-nes" "text-lg"
+             {:class [
+                      "font-nes" "text-md"
                       (when show-name "px-2")
                       (when show-name "pl-3")
                       (when-not show-name "w-0")
@@ -365,13 +366,24 @@
                         color    ""
                         :else    "text-yo-blue-300")]
               :style (when (and (not selected) (not urgent) color) {:color color})}
-             (when show-name title)
 
-             (let [show (and show-name (or hovering? (#{0} (count clients)) (not scratchpad)))]
-               [:span
-                {:class [(when show "pl-2")]}
-                (when show
-                  (str "(" index ")"))])]])
+             [:div
+              (when show-name title)
+
+              (let [show (and show-name (or hovering? (#{0} (count clients)) (not scratchpad)))]
+                [:span
+                 {:class [(when show "pl-2")]}
+                 (when show
+                   (str "(" index ")"))])]
+             [:div
+              {:class ["text-xs" "pt-2"
+                       (cond
+                         urgent "text-city-red-400"
+                         :else  "text-yo-blue-300")]}
+              (str
+                (when needs-push? "#needs-push")
+                (when needs-pull? "#needs-pull")
+                (when dirty? "#dirty"))]]])
 
          (when hovering?
            [:div
@@ -406,22 +418,30 @@
                   "text-white"
                   "w-1/5"]}
 
-         (when @hovered-workspace
-           (let [{:keys [workspace/directory
-                         git/repo]} @hovered-workspace
-                 dir-path           (string/replace (or repo directory "") "/home/russ" "~")]
-             ;; (->>
-             ;;   @hovered-workspace
-             ;;   (map (fn [[k v]] (str "[" k ": " v "] ")))
-             ;;   (concat ["[dir-path: " dir-path "]"])
-             ;;   (apply str))
-             ))
+         [:div
+          (when @hovered-workspace
+            (let [{:keys [workspace/directory
+                          git/repo
+                          git/needs-push?
+                          git/dirty?
+                          git/needs-pull?
+                          ]} @hovered-workspace
+                  dir-path   (string/replace (or repo directory "") "/home/russ" "~")]
+              (str
+                (when needs-push?
+                  (str "#needs-push?"))
+                (when needs-pull?
+                  (str "#needs-pull?"))
+                (when dirty?
+                  (str "#dirty?")))
+              ))]
 
-         (when @hovered-client
-           (->>
-             @hovered-client
-             (map (fn [[k v]] (str "[" k " " v "] ")))
-             (apply str)))]
+         [:div
+          (when @hovered-client
+            (->>
+              @hovered-client
+              (map (fn [[k v]] (str "[" k " " v "] ")))
+              (apply str)))]]
 
         ;; workspaces (middle)
         [:div
