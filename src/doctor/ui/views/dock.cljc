@@ -26,7 +26,7 @@
        (clawe.workspaces/all-workspaces)
        (filter :awesome.tag/name)
        (map clawe.workspaces/apply-git-status)
-       (map #(dissoc % :rules/apply)))))
+       (map #(dissoc % :rules/apply :rules/is-my-client?)))))
 
 (defhandler get-workspaces []
   (active-workspaces))
