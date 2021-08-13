@@ -62,7 +62,7 @@
 
 #?(:clj
    (defn build-dock-metadata []
-     {:muted (r.pulseaudio/input-muted?)}))
+     {:microphone/muted (r.pulseaudio/input-muted?)}))
 
 (defhandler get-dock-metadata []
   (build-dock-metadata))
@@ -264,6 +264,10 @@
          (string/includes? name "Developer Tools")
          {:color "text-city-blue-600"
           :src   "/assets/candy-icons/firefox-developer-edition.svg"}
+
+         (= "Godot" class)
+         {:color "text-city-green-400"
+          :src   "/assets/candy-icons/godot.svg"}
 
          :else
          (do
