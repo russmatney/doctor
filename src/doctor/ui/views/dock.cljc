@@ -64,6 +64,7 @@
    (defn build-dock-metadata []
      {:microphone/muted (r.pulseaudio/input-muted?)}))
 
+
 (defhandler get-dock-metadata []
   (build-dock-metadata))
 
@@ -142,8 +143,7 @@
        (lume.first)
        ((fn [c]
           (tset c :above false)
-          (tset c :below true)
-          )))))
+          (tset c :below true))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend Data contexts
@@ -206,15 +206,22 @@
          (remove nil?)))))
 
 #?(:cljs
-   (defn client->icon [client]
+   (defn client->icon [client workspace]
      ;; TODO namespace client keys
      ;; TODO get filepaths for class == emacs clients
      ;; i.e. emacs clients could have types for clojure project, react/python project, org file, etc
-     (let [{:awesome.client/keys [class name]} client]
+     (let [{:awesome.client/keys [class name]} client
+           {:workspace/keys [title]}           workspace]
        (cond
          (= "Emacs" class)
-         {:color "text-city-blue-400"
-          :src   "/assets/candy-icons/emacs.svg"}
+         (cond
+           (= "journal" title)
+           {:color "text-city-blue-400"
+            :src   "/assets/candy-icons/todo.svg"}
+
+           :else
+           {:color "text-city-blue-400"
+            :src   "/assets/candy-icons/emacs.svg"})
 
          (= "Alacritty" class)
          {:color "text-city-green-600"
@@ -269,6 +276,10 @@
          {:color "text-city-green-400"
           :src   "/assets/candy-icons/godot.svg"}
 
+         (= "Aseprite" class)
+         {:color "text-city-green-400"
+          :src   "/assets/candy-icons/winds.svg"}
+
          :else
          (do
            (println "missing icon for client" client)
@@ -276,8 +287,10 @@
 
 #?(:cljs
    (defn client-icons
-     ([clients] (client-icons clients {}))
-     ([clients {:client/keys [client-hovered client-unhovered]}]
+     ([clients] (client-icons {} clients))
+     ([{:client/keys [client-hovered client-unhovered]
+        :keys        [workspace]
+        } clients]
       (when (seq clients)
         [:div
          {:class ["flex" "flex-row"]}
@@ -286,7 +299,7 @@
                       )]
            (let [c-name                                  (->> c :awesome.client/name (take 15) (apply str))
                  {:awesome.client/keys [urgent focused]} c
-                 {:keys [color icon src]}                (client->icon c)]
+                 {:keys [color icon src]}                (client->icon c workspace)]
              ^{:key (:window c)}
              [:div
               {
@@ -354,7 +367,7 @@
            [:div
             {:class ["flex" "flex-row"
                      "items-center"]}
-            [client-icons clients opts]
+            [client-icons (assoc opts :workspace wsp) clients]
 
             [:div
              {:class [
