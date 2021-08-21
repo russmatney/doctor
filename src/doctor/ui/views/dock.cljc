@@ -6,7 +6,8 @@
              [clawe.workspaces :as clawe.workspaces]
              [clawe.scratchpad :as scratchpad]
              [ralphie.awesome :as awm]
-             [ralphie.pulseaudio :as r.pulseaudio]]
+             [ralphie.pulseaudio :as r.pulseaudio]
+             [ralphie.spotify :as r.spotify]]
        :cljs [[wing.core :as w]
               [clojure.string :as string]
               [uix.core.alpha :as uix]
@@ -62,8 +63,12 @@
 
 #?(:clj
    (defn build-dock-metadata []
-     {:microphone/muted (r.pulseaudio/input-muted?)}))
-
+     (->
+       {:microphone/muted (r.pulseaudio/input-muted?)
+        :spotify/volume   (r.spotify/spotify-volume-label)
+        :audio/volume     (r.pulseaudio/default-sink-volume-label)}
+       (merge (r.spotify/spotify-current-song))
+       (dissoc :spotify/album-url :spotify/album))))
 
 (defhandler get-dock-metadata []
   (build-dock-metadata))
