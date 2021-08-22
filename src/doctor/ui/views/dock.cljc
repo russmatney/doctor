@@ -6,6 +6,7 @@
              [clawe.workspaces :as clawe.workspaces]
              [clawe.scratchpad :as scratchpad]
              [ralphie.awesome :as awm]
+             [ralphie.battery :as r.battery]
              [ralphie.pulseaudio :as r.pulseaudio]
              [ralphie.spotify :as r.spotify]]
        :cljs [[wing.core :as w]
@@ -67,7 +68,8 @@
        {:microphone/muted (r.pulseaudio/input-muted?)
         :spotify/volume   (r.spotify/spotify-volume-label)
         :audio/volume     (r.pulseaudio/default-sink-volume-label)}
-       (merge (r.spotify/spotify-current-song))
+       (merge (r.spotify/spotify-current-song)
+              (r.battery/info))
        (dissoc :spotify/album-url :spotify/album))))
 
 (defhandler get-dock-metadata []
@@ -224,14 +226,19 @@
            {:color "text-city-blue-400"
             :src   "/assets/candy-icons/todo.svg"}
 
+           (= "garden" title)
+           {:color "text-city-blue-400"
+            :src   "/assets/candy-icons/cherrytree.svg"}
+
            :else
            {:color "text-city-blue-400"
             :src   "/assets/candy-icons/emacs.svg"})
 
          (= "Alacritty" class)
          {:color "text-city-green-600"
-          ;; :icon  [:img {:src   "/assets/candy-icons/Alacritty.svg"}]
-          :icon  octicons/terminal16}
+          :icon  [:img {:src "/assets/candy-icons/Alacritty.svg"}]
+          ;; :icon  octicons/terminal16
+          }
 
          (= "Spotify" class)
          {:color "text-city-green-400"
