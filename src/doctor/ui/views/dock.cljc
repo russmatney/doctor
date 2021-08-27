@@ -341,7 +341,7 @@
    (defn workspace-comp
      ([wsp] (workspace-comp nil wsp))
      ([{:as             opts
-        :client/keys    [hovered-client]
+        ;; :client/keys    [hovered-client]
         :workspace/keys [hovered-workspace
                          workspace-hovered
                          workspace-unhovered
@@ -425,12 +425,20 @@
                (:action/label ax)])])]))))
 
 #?(:cljs
+   (defn pie-chart
+     "TODO write this pie chart component"
+     [{:keys [label value]}]
+     [:div
+      (str label " " value)]))
+
+#?(:cljs
    (defn widget []
-     (let [hovered-client    (uix/state nil)
-           hovered-workspace (uix/state nil)
-           {:keys [items]}   (use-workspaces)
-           metadata          (use-dock-metadata)]
-       (println "metadata" metadata)
+     (let [hovered-client         (uix/state nil)
+           hovered-workspace      (uix/state nil)
+           last-hovered-client    (uix/state nil)
+           last-hovered-workspace (uix/state nil)
+           {:keys [items]}        (use-workspaces)
+           metadata               (use-dock-metadata)]
        [:div
         {:class ["flex" "flex-row"
                  "justify-between"
@@ -448,13 +456,13 @@
                   "w-1/5"]}
 
          [:div
-          (when @hovered-workspace
+          (when @last-hovered-workspace
             (let [{:keys [workspace/directory
                           git/repo
                           git/needs-push?
                           git/dirty?
                           git/needs-pull?
-                          ]} @hovered-workspace
+                          ]} @last-hovered-workspace
                   dir-path   (string/replace (or repo directory "") "/home/russ" "~")]
               (str
                 (when needs-push?
@@ -466,9 +474,9 @@
               ))]
 
          [:div
-          (when @hovered-client
+          (when @last-hovered-client
             (->>
-              @hovered-client
+              @last-hovered-client
               (map (fn [[k v]] (str "[" k " " v "] ")))
               (apply str)))]]
 
@@ -481,10 +489,14 @@
            ^{:key i}
            [workspace-comp
             {:workspace/hovered-workspace   hovered-workspace
-             :workspace/workspace-hovered   (fn [w] (reset! hovered-workspace w))
+             :workspace/workspace-hovered   (fn [w]
+                                              (reset! last-hovered-workspace w)
+                                              (reset! hovered-workspace w))
              :workspace/workspace-unhovered (fn [_] (reset! hovered-workspace nil))
              :client/hovered-client         hovered-client
-             :client/client-hovered         (fn [c] (reset! hovered-client c))
+             :client/client-hovered         (fn [c]
+                                              (reset! last-hovered-client c)
+                                              (reset! hovered-client c))
              :client/client-unhovered       (fn [_] (reset! hovered-client nil))}
             it])]
 
@@ -500,9 +512,23 @@
 
          [:div
           {:class ["text-right"]}
-          (when metadata
-            (->>
-              metadata
-              (map (fn [[k v]] (str "[" k " " v "] ")))
-              (apply str)))]
-         ]])))
+          [:div
+           (when metadata
+             (->>
+               metadata
+               (remove (fn [[k v]] (when v (string/includes? v "%"))))
+               (map (fn [[k v]] (str "[" k " " v "] ")))
+               (apply str)))
+           ]
+          [:div
+           (when-let [pcts
+                      (->>
+                        metadata
+                        (filter (fn [[k v]] (when v (string/includes? v "%"))))
+                        )]
+             (for [[k v] pcts]
+               ^{:key k}
+               [pie-chart {:label k :value v}]
+               )
+             )
+           ]]]])))
