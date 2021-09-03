@@ -466,14 +466,13 @@
          #(reset! time (t/zoned-date-time))
          1000)
        [:div
-        {:class ["pl-32"
+        {:class ["pl-64"
                  "flex" "flex-row"
                  "justify-between"
                  "min-h-screen"
                  "max-h-screen"
                  "overflow-hidden"
-                 "text-city-pink-200"
-                 ]}
+                 "text-city-pink-200"]}
 
         ;; left side (workspaces)
         [:div
@@ -512,11 +511,14 @@
          [:span
           (:spotify/song metadata)]]
 
-        (when-let [todos (seq (:todos/in-progress metadata))]
+        (let [ct (-> metadata :todos/in-progress count)]
           [:div
-           (str (count todos) " in-progress todo(s)")])
+           (if (zero? ct)
+             "No in-progress todos"
+             (str ct " in-progress todo(s)"))])
 
-        ;; TODO call update-topbar-metadata when todos get updated
+        ;; TODO call update-topbar-metadata when todos get updated?
+        ;; for now it gets called by various things already
         (when (:todos/latest metadata)
           (let [{:todo/keys [name]} (:todos/latest metadata)]
             [:div "Current: " name]))

@@ -3,13 +3,5 @@
 
 * garden file
 [[org:garden/workspaces/doctor.org][Doctor Garden File]]
-* [ ] top bar app
-
-doctor/topbar
-================
-
-ughly systray <> Date Time Host >< Spotify
-
-** manages itself
 * [ ] chart.js for volume/battery percentages
 * [ ] icon for muted/not muted
