@@ -11,6 +11,7 @@
              [ralphie.spotify :as r.spotify]
              [babashka.process :as process]
              [clojure.string :as string]
+             [clawe.db.core :as db]
              ]
        :cljs [[wing.core :as w]
               [clojure.string :as string]
@@ -62,20 +63,40 @@
 
      (update-topbar)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Get todos
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+#?(:clj
+   (defn in-progress-todos []
+     (some->>
+       (db/query
+         '[:find (pull ?e [*])
+           :where
+           [?e :todo/status :status/in-progress]])
+       first)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Misc metadata
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
 #?(:clj
    (defn build-topbar-metadata []
-     (->
-       {:microphone/muted (r.pulseaudio/input-muted?)
-        :spotify/volume   (r.spotify/spotify-volume-label)
-        :audio/volume     (r.pulseaudio/default-sink-volume-label)
-        :hostname         (-> (process/$ hostname) process/check :out slurp string/trim)}
-       (merge (r.spotify/spotify-current-song)
-              (r.battery/info))
-       (dissoc :spotify/album-url :spotify/album))))
+     (let [todos  (in-progress-todos)
+           latest (some->> todos (sort-by :todo/last-started-at) reverse first)]
+       (->
+         {:microphone/muted (r.pulseaudio/input-muted?)
+          :spotify/volume   (r.spotify/spotify-volume-label)
+          :audio/volume     (r.pulseaudio/default-sink-volume-label)
+          :hostname         (-> (process/$ hostname) process/check :out slurp string/trim)}
+         (merge (r.spotify/spotify-current-song)
+                (r.battery/info))
+         (dissoc :spotify/album-url :spotify/album)
+         (assoc :todos/in-progress todos)
+         (assoc :todos/latest latest)))))
 
 (defhandler get-topbar-metadata []
   (build-topbar-metadata))
@@ -277,7 +298,7 @@
          {:color "text-city-green-400"
           :src   "/assets/candy-icons/Zoom.svg"}
 
-         (= "clover/doctor-dock" name)
+         (#{"clover/doctor-dock" "clover/doctor-topbar"} name)
          {:color "text-city-blue-600"
           :icon  mdi/doctor}
 
@@ -313,10 +334,9 @@
            (let [c-name                                  (->> c :awesome.client/name (take 15) (apply str))
                  {:awesome.client/keys [urgent focused]} c
                  {:keys [color icon src]}                (client->icon c workspace)]
-             ^{:key (:window c)}
+             ^{:key (or (:window c) c-name)}
              [:div
-              {
-               :on-mouse-over #(do (client-hovered c))
+              {:on-mouse-over #(do (client-hovered c))
                :on-mouse-out  #(do (client-unhovered c))
                :class         ["flex" "flex-row" "items-center"]}
               [:div
@@ -492,6 +512,15 @@
          [:span
           (:spotify/song metadata)]]
 
+        (when-let [todos (seq (:todos/in-progress metadata))]
+          [:div
+           (str (count todos) " in-progress todo(s)")])
+
+        ;; TODO call update-topbar-metadata when todos get updated
+        (when (:todos/latest metadata)
+          (let [{:todo/keys [name]} (:todos/latest metadata)]
+            [:div "Current: " name]))
+
         ;; right side
         [:div
          {:class ["m-1" "p-4"
@@ -521,6 +550,4 @@
                         (filter (fn [[_ v]] (when (and v (string? v)) (string/includes? v "%")))))]
              (for [[k v] pcts]
                ^{:key k}
-               [pie-chart {:label k :value v}]
-               )
-             )]]]])))
+               [pie-chart {:label k :value v}]))]]]])))
