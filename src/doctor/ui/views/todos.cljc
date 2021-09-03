@@ -11,7 +11,8 @@
              [clawe.db.core :as db]
              ]
        :cljs [[uix.core.alpha :as uix]
-              [plasma.uix :refer [with-rpc with-stream]]])))
+              [plasma.uix :refer [with-rpc with-stream]]
+              [tick.alpha.api :as t]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DB todo crud
@@ -40,16 +41,17 @@
 
 #?(:clj
    (comment
-     (get-todo-db --i)
-     (upsert-todo-db --i)
-
      (db/query
        '[:find (pull ?e [*])
          :in $ ?name
          :where
-         [?e :org/name ?name]
-         [?e :org/id ?id]]
-       (:org/name --i))))
+         [?e :org/name ?name]]
+       (:org/name --i))
+
+     (db/query
+       '[:find (pull ?e [*])
+         :where
+         [?e :todo/status :status/in-progress]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; org helpers
@@ -162,62 +164,47 @@
 (defhandler open-in-emacs [item]
   (println "open in emacs!!!")
   (println "opening file:" item)
-  :ok
-  )
-
-
-(comment
-  (open-in-emacs {}))
+  (println "(TODO)")
+  :ok)
 
 (defhandler add-to-db [item]
   (println "upserting-to-db" item)
   (upsert-todo-db item)
   (update-todos)
-  :ok
-  )
+  :ok)
 
 (defhandler mark-complete [item]
   (println "marking-complete" item)
   (-> item
       (assoc :todo/status :status/done)
+      (assoc :todo/last-completed-at (System/currentTimeMillis))
       upsert-todo-db)
   (update-todos)
-  :ok
-  )
+  :ok)
 
 (defhandler mark-in-progress [item]
   (println "marking-in-progress" item)
-  (def --i item)
   (-> item
       (assoc :todo/status :status/in-progress)
-      (assoc :todo/status :status/in-progress)
+      (assoc :todo/last-started-at (System/currentTimeMillis))
       upsert-todo-db)
   (update-todos)
-  :ok
-  )
-
-(comment
-  (-> --i
-      (assoc :todo/status :status/in-progress)
-      upsert-todo-db
-      )
-
-  (get-todo-db --i)
-  )
+  :ok)
 
 (defhandler mark-not-started [item]
   (println "marking-not-started" item)
   (-> item
       (assoc :todo/status :status/not-started)
+      (assoc :todo/last-stopped-at (System/currentTimeMillis))
       upsert-todo-db)
   (update-todos)
-  :ok
-  )
+  :ok)
 
 (defhandler mark-cancelled [item]
   (println "marking-cancelled" item)
   (-> item
       (assoc :todo/status :status/cancelled)
+      (assoc :todo/last-cancelled-at (System/currentTimeMillis))
       upsert-todo-db)
   (update-todos)
   :ok)
@@ -261,8 +248,11 @@
      [{:keys [on-select is-selected?]} item]
      (let [{:db/keys   [id]
             :org/keys  [body urls]
-            :todo/keys [status name created-at file-name]} item
-           hovering?                                       (uix/state false)]
+            :todo/keys [status name file-name
+                        last-started-at last-stopped-at
+                        last-cancelled-at last-complete-at
+                        ]} item
+           hovering?       (uix/state false)]
        [:div
         {:class          ["m-1" "p-4"
                           "border" "border-city-blue-600"
@@ -303,10 +293,10 @@
          {:class ["text-xl"]}
          name]
 
-        (when created-at
+        (when last-started-at
           [:div
            {:class ["font-mono"]}
-           created-at])
+           (t/instant (t/new-duration last-started-at :millis))])
 
         [:div
          {:class ["font-mono"]}
@@ -343,48 +333,6 @@
                           ]
                   :href  url}
               url])])])))
-
-#?(:cljs
-   (defn selected-node
-     [{:org/keys  [body urls]
-       :todo/keys [name file-name]}]
-
-     [:div
-      {:class ["flex" "flex-col" "p-2"]}
-      [:span
-       {:class ["font-nes" "text-xl" "text-city-green-200" "p-2"]}
-       name]
-
-      [:span
-       {:class ["font-mono" "text-xl" "text-city-green-200" "p-2"]}
-       file-name]
-
-      (when (seq body)
-        [:div
-         {:class ["font-mono" "text-city-blue-400"
-                  "flex" "flex-col" "p-2"
-                  "bg-yo-blue-500"]}
-         (for [[i line] (map-indexed vector body)]
-           (let [{:keys [text]} line]
-             (cond
-               (= "" text)
-               ^{:key i} [:span {:class ["py-1"]} " "]
-
-               :else
-               ^{:key i} [:span text])))])
-
-      (when (seq urls)
-        [:div
-         {:class ["font-mono" "text-city-blue-400"
-                  "flex" "flex-col" "pt-4" "p-2"]}
-         (for [[i url] (map-indexed vector urls)]
-           ^{:key i}
-           [:a {:class ["py-1"
-                        "cursor-pointer"
-                        "hover:text-yo-blue-400"
-                        ]
-                :href  url}
-            url])])]))
 
 #?(:cljs
    (defn split-counts [items]
@@ -437,8 +385,8 @@
          [split-counts items]]
 
         ;; TODO move 'selected' to 'current'?
-        (when @selected
-          (selected-node @selected))
+        ;; (when @selected
+        ;;   (selected-node @selected))
 
         ;; TODO group/filter by file-name
         ;; TODO group/filter by status
@@ -452,7 +400,7 @@
            {:class ["flex" "flex-col" "flex-wrap" "justify-center"]}
            [:div
             {:class ["text-2xl" "p-2" "pt-4"]}
-            label]
+            (str label " (" (count item-group) ")")]
            (for [[i it] (->> item-group (map-indexed vector))]
              ^{:key i}
              [todo
