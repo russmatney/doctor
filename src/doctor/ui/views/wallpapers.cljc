@@ -6,7 +6,9 @@
              [clawe.wallpapers :as c.wallpapers]]
        :cljs [[wing.core :as w]
               [uix.core.alpha :as uix]
-              [plasma.uix :refer [with-rpc with-stream]]])))
+              [plasma.uix :refer [with-rpc with-stream]]
+              [tick.alpha.api :as t]
+              ])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API
@@ -14,12 +16,12 @@
 
 #?(:clj
    (defn active-wallpapers []
-     (let [all     (c.wallpapers/all-wallpapers)
-           example {:name          "Example item"
-                    :file/filename "some filepath"}]
+     (let [all (c.wallpapers/all-wallpapers)]
        (->>
-         (conj all example)
-         (take 30)
+         all
+         (sort-by :background/last-time-set)
+         reverse
+         (take 50)
          (into [])))))
 
 (defhandler get-wallpapers []
@@ -30,27 +32,32 @@
      :start (s/stream)
      :stop (s/close! *wallpapers-stream*)))
 
-#?(:clj
-   (comment
-     (sys/start! `*wallpapers-stream*)
-     ))
-
 (defstream wallpapers-stream [] *wallpapers-stream*)
-
 
 #?(:clj
    (defn update-wallpapers []
      (println "pushing to wallpapers stream (updating wallpapers)!")
      (s/put! *wallpapers-stream* (active-wallpapers))))
 
-#?(:clj
-   (comment
-     (->>
-       (active-wallpapers)
-       first)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; actions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-     (update-wallpapers)
-     ))
+(defhandler set-wallpaper [item]
+  (c.wallpapers/set-wallpaper item)
+  (update-wallpapers))
+
+#?(:cljs
+   (defn ->actions [item]
+     (let [{:keys []} item]
+       (->>
+         [{:action/label    "js/alert"
+           :action/on-click #(js/alert item)}
+          {:action/label    "Set as background"
+           :action/on-click #(set-wallpaper item)}
+          ]
+         (remove nil?)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -60,37 +67,26 @@
    (defn use-wallpapers []
      (let [wallpapers  (plasma.uix/state [])
            handle-resp (fn [new-items]
-                         (println "new-items" (count new-items))
                          (swap! wallpapers
-                                (fn [items]
-                                  (->>
-                                    (concat
-                                      ;; TODO work around this keeping/merging with the 'old' ones
-                                      ;; (or items [])
-                                      new-items)
-                                    (w/distinct-by :file/filename)))))]
+                                (fn [_]
+                                  (println (some-> new-items first))
+                                  (->> new-items (w/distinct-by :file/full-path)))))]
 
        (with-rpc [] (get-wallpapers) handle-resp)
        (with-stream [] (wallpapers-stream) handle-resp)
-
        {:items @wallpapers})))
-
-#?(:cljs
-   (defn ->actions [item]
-     (let [{:keys []} item]
-       (->>
-         [{:action/label    "js/alert"
-           :action/on-click #(js/alert item)}]
-         (remove nil?)))))
-
 
 #?(:cljs
    (defn screenshot-comp
      ([item] (screenshot-comp nil item))
      ([_opts item]
-      (let [{:keys [name
-                    file/filename
+      (let [{:keys [#_name
+                    db/id
+                    file/full-path
+                    file/common-path
                     file/web-asset-path
+                    background/last-time-set
+                    background/used-count
                     ]} item
             hovering?  (uix/state false)]
         [:div
@@ -106,14 +102,16 @@
                   :class ["max-w-xl"
                           "max-h-72"]}])
 
-         ;; [:div
-         ;;  {:class ["font-nes" "text-lg"]}
-         ;;  name]
+         [:div {:class ["font-nes" "text-lg"]} common-path]
+         [:div {:class ["text-lg"]} id]
+         (when last-time-set
+           [:div {:class ["text-lg"]}
+            (t/instant (t/new-duration last-time-set :millis))])
 
-         ;; [:div
-         ;;  filename]
+         (when used-count
+           [:div {:class ["text-lg"]} used-count])
 
-         [:div
+         [:div.my-3
           (for [ax (->actions item)]
             ^{:key (:action/label ax)}
             [:div
