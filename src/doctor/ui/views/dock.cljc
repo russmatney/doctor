@@ -272,7 +272,7 @@
          {:color "text-city-green-400"
           :src   "/assets/candy-icons/Zoom.svg"}
 
-         (= "clover/doctor-dock" name)
+         (#{"clover/doctor-dock" "clover/doctor-topbar"} name)
          {:color "text-city-blue-600"
           :icon  mdi/doctor}
 

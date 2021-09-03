@@ -59,11 +59,21 @@
         (log/info "request" uri (System/currentTimeMillis))
         ;; poor man's router
         (cond
+          (= uri "/topbar/update")
+          (do
+            (dock/update-dock)
+            (dock/update-dock-metadata)
+            (topbar/update-topbar)
+            (topbar/update-topbar-metadata)
+            {:status 200 :body "updated dock and topbar"})
+
           (= uri "/dock/update")
           (do
             (dock/update-dock)
             (dock/update-dock-metadata)
-            {:status 200 :body "updated dock"})
+            (topbar/update-topbar)
+            (topbar/update-topbar-metadata)
+            {:status 200 :body "updated dock and topbar"})
 
           (= uri "/screenshots/update")
           (do

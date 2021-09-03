@@ -8,15 +8,19 @@
              [ralphie.awesome :as awm]
              [ralphie.battery :as r.battery]
              [ralphie.pulseaudio :as r.pulseaudio]
-             [ralphie.spotify :as r.spotify]]
+             [ralphie.spotify :as r.spotify]
+             [babashka.process :as process]
+             [clojure.string :as string]
+             ]
        :cljs [[wing.core :as w]
               [clojure.string :as string]
               [uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
               [hiccup-icons.octicons :as octicons]
-              [hiccup-icons.fa :as fa]
-              [hiccup-icons.fa4 :as fa4]
-              [hiccup-icons.mdi :as mdi]])))
+              [hiccup-icons.mdi :as mdi]
+              [tick.alpha.api :as t]
+              [tick.format :as t.format]
+              ])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Active workspaces
@@ -67,7 +71,8 @@
      (->
        {:microphone/muted (r.pulseaudio/input-muted?)
         :spotify/volume   (r.spotify/spotify-volume-label)
-        :audio/volume     (r.pulseaudio/default-sink-volume-label)}
+        :audio/volume     (r.pulseaudio/default-sink-volume-label)
+        :hostname         (-> (process/$ hostname) process/check :out slurp string/trim)}
        (merge (r.spotify/spotify-current-song)
               (r.battery/info))
        (dissoc :spotify/album-url :spotify/album))))
@@ -321,16 +326,16 @@
                           color   color
                           :else   "text-city-blue-400")
 
-                        "text-3xl"
+                        "text-xl"
                         "p-2"
                         "border"
                         "rounded"
                         (cond focused "border-city-orange-400")
                         (cond focused "border-opacity-70"
                               :else   "border-opacity-0")]}
-               (cond src   [:img {:class ["w-16"]
+               (cond src   [:img {:class ["w-8"]
                                   :src   src}]
-                     icon  [:div {:class ["text-6xl"]} icon]
+                     icon  [:div {:class ["text-3xl"]} icon]
                      :else c-name)]]))]))))
 
 #?(:cljs
@@ -434,51 +439,26 @@
            last-hovered-client    (uix/state nil)
            last-hovered-workspace (uix/state nil)
            {:keys [items]}        (use-workspaces)
-           metadata               (use-topbar-metadata)]
+           metadata               (use-topbar-metadata)
+
+           time (uix/state (t/zoned-date-time))]
+       (js/setTimeout
+         #(reset! time (t/zoned-date-time))
+         1000)
        [:div
-        {:class ["flex" "flex-row"
+        {:class ["pl-32"
+                 "flex" "flex-row"
                  "justify-between"
                  "min-h-screen"
                  "max-h-screen"
-                 "overflow-hidden"]}
+                 "overflow-hidden"
+                 "text-city-pink-200"
+                 ]}
 
-        ;; left side
+        ;; left side (workspaces)
         [:div
-         {:class ["m-1" "p-4"
-                  "bg-yo-blue-500"
-                  "border-city-blue-400"
-                  "rounded"
-                  "text-white"
-                  "w-1/5"]}
-
-         [:div
-          (when @last-hovered-workspace
-            (let [{:keys [workspace/directory
-                          git/repo
-                          git/needs-push?
-                          git/dirty?
-                          git/needs-pull?
-                          ]} @last-hovered-workspace
-                  dir-path   (string/replace (or repo directory "") "/home/russ" "~")]
-              (str
-                (when needs-push?
-                  (str "#needs-push?"))
-                (when needs-pull?
-                  (str "#needs-pull?"))
-                (when dirty?
-                  (str "#dirty?")))
-              ))]
-
-         [:div
-          (when @last-hovered-client
-            (->>
-              @last-hovered-client
-              (map (fn [[k v]] (str "[" k " " v "] ")))
-              (apply str)))]]
-
-        ;; workspaces (middle)
-        [:div
-         {:class ["flex" "flex-row"
+         {:class [
+                  "flex" "flex-row"
                   "justify-center"
                   "overflow-hidden"]}
          (for [[i it] (->> items (map-indexed vector))]
@@ -496,6 +476,22 @@
              :client/client-unhovered       (fn [_] (reset! hovered-client nil))}
             it])]
 
+        [:div
+         ;; TODO seems a bit overactive...
+         [:span
+          (some->> @time (t.format/format (t.format/formatter "mm/dd HH:MM")))]
+
+         "|"
+         [:span
+          (:hostname metadata)]]
+
+        [:div
+         [:span
+          (:spotify/artist metadata)]
+         ">"
+         [:span
+          (:spotify/song metadata)]]
+
         ;; right side
         [:div
          {:class ["m-1" "p-4"
@@ -511,14 +507,18 @@
            (when metadata
              (->>
                metadata
-               (remove (fn [[k v]] (when (and v (string? v)) (string/includes? v "%"))))
+               (remove (fn [[k v]]
+                         (or
+                           (#{:spotify/artist :spotify/song :hostname} k)
+                           (when (and v (string? v))
+                             (string/includes? v "%")))))
                (map (fn [[k v]] (str "[" k " " v "] ")))
                (apply str)))]
           [:div
            (when-let [pcts
                       (->>
                         metadata
-                        (filter (fn [[k v]] (when (and v (string? v)) (string/includes? v "%")))))]
+                        (filter (fn [[_ v]] (when (and v (string? v)) (string/includes? v "%")))))]
              (for [[k v] pcts]
                ^{:key k}
                [pie-chart {:label k :value v}]
