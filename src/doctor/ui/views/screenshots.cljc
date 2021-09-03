@@ -14,14 +14,8 @@
 
 #?(:clj
    (defn active-screenshots []
-     (let [all     (c.screenshots/all-screenshots)
-           example {:name          "Example item"
-                    :file/filename "some filepath"}]
-       (->>
-         (conj all example)
-         (take 30)
-         (into []))
-       )))
+     (let [all (c.screenshots/all-screenshots)]
+       (->> all (take 30) (into [])))))
 
 (defhandler get-screenshots []
   (active-screenshots))
@@ -31,27 +25,12 @@
      :start (s/stream)
      :stop (s/close! *screenshots-stream*)))
 
-#?(:clj
-   (comment
-     (sys/start! `*screenshots-stream*)
-     ))
-
 (defstream screenshots-stream [] *screenshots-stream*)
-
 
 #?(:clj
    (defn update-screenshots []
      (println "pushing to screenshots stream (updating screenshots)!")
      (s/put! *screenshots-stream* (active-screenshots))))
-
-#?(:clj
-   (comment
-     (->>
-       (active-screenshots)
-       first)
-
-     (update-screenshots)
-     ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -63,13 +42,8 @@
            handle-resp (fn [new-items]
                          (println "new-items" (count new-items))
                          (swap! screenshots
-                                (fn [items]
-                                  (->>
-                                    (concat
-                                      ;; TODO work around this keeping/merging with the 'old' ones
-                                      ;; (or items [])
-                                      new-items)
-                                    (w/distinct-by :file/filename)))))]
+                                (fn [_]
+                                  (->> new-items (w/distinct-by :file/full-path)))))]
 
        (with-rpc [] (get-screenshots) handle-resp)
        (with-stream [] (screenshots-stream) handle-resp)
@@ -84,16 +58,14 @@
            :action/on-click #(js/alert item)}]
          (remove nil?)))))
 
-
 #?(:cljs
    (defn screenshot-comp
      ([item] (screenshot-comp nil item))
      ([_opts item]
-      (let [{:keys [name
-                    file/filename
-                    file/web-asset-path
-                    ]} item
-            hovering?  (uix/state false)]
+      (let [{:keys [;; name file/full-path
+                    file/web-asset-path]} item
+            hovering?                     (uix/state false)]
+
         [:div
          {:class
           ["m-1" "p-4"
@@ -106,13 +78,6 @@
            [:img {:src   web-asset-path
                   :class ["max-w-xl"
                           "max-h-72"]}])
-
-         ;; [:div
-         ;;  {:class ["font-nes" "text-lg"]}
-         ;;  name]
-
-         ;; [:div
-         ;;  filename]
 
          [:div
           (for [ax (->actions item)]
