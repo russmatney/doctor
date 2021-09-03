@@ -16,19 +16,6 @@ doctor/todos
 ** Pull from their todos
 supports 'modes'
 easily toggle files pooling the todos on and off
-* [ ] create a wallpaper app
-
-doctor/wallpaper
-================
-
-** A full-stack widget for viewing and updating your wallpaper
-
-** Similar to the screenshot app
-
-** supports writing to your awesome.wm theme file
-could probably reach for alot of other things too
-maybe a generic ralphie/background that tries to be more agnostic
-
 * [ ] top bar app
 
 doctor/topbar
@@ -37,3 +24,5 @@ doctor/topbar
 ughly systray <> Date Time Host >< Spotify
 
 ** manages itself
+* [ ] chart.js for volume/battery percentages
+* [ ] icon for muted/not muted

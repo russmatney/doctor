@@ -11,6 +11,7 @@
    [uix.core.alpha :as uix]
    [uix.dom.alpha :as uix.dom]
 
+   [doctor.ui.views.todos :as views.todos]
    [doctor.ui.views.dock :as views.dock]
    [doctor.ui.views.screenshots :as views.screenshots]
    [doctor.ui.views.wallpapers :as views.wallpapers]))
@@ -21,6 +22,7 @@
 
 (def routes
   [["/" {:name :page/home}]
+   ["/todos" {:name :page/todos}]
    ["/dock" {:name :page/dock}]
    ["/dock-bg" {:name :page/dock-bg}]
    ["/counter" {:name :page/counter}]
@@ -53,6 +55,7 @@
                      "text-xxl"
                      "font-nes"]}
        (for [[page-name label] [[:page/home "Home"]
+                                [:page/todos "Todos"]
                                 [:page/dock "Dock"]
                                 [:page/dock-bg "Dock Bg"]
                                 [:page/counter "Counter"]
@@ -82,6 +85,7 @@
     (println "page-name" page-name)
     (case page-name
       :page/home        [home nil]
+      :page/todos       [home views.todos/widget]
       :page/dock        [views.dock/widget]
       :page/dock-bg     [home views.dock/widget]
       :page/counter     [home counter]

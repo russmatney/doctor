@@ -6,6 +6,7 @@
    [plasma.server.interceptors :as plasma.interceptors]
    [doctor.config :as config]
    [doctor.time-literals-transit :as tlt]
+   [doctor.ui.views.todos :as todos]
    [doctor.ui.views.dock :as dock]
    [doctor.ui.views.screenshots :as screenshots]
    [doctor.ui.views.wallpapers :as wallpapers]
@@ -45,7 +46,8 @@
   [dock/*workspaces-stream*
    dock/*dock-metadata-stream*
    screenshots/*screenshots-stream*
-   wallpapers/*wallpapers-stream*]
+   wallpapers/*wallpapers-stream*
+   todos/*todos-stream*]
   :start
   (let [port (:server/port config/*config*)]
     (log/info "Starting *server* on port" port)

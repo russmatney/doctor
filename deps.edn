@@ -62,8 +62,9 @@
   ;; ui icons
   hiccup-icons/hiccup-icons {:mvn/version "0.4.4"}
 
-  russmatney/clawe   {:local/root "../clawe"}
-  russmatney/ralphie {:local/root "../ralphie"}}
+  russmatney/org-crud {:local/root "../org-crud"}
+  russmatney/clawe    {:local/root "../clawe"}
+  russmatney/ralphie  {:local/root "../ralphie"}}
 
  :aliases
  {:main     {:main-opts ["-m" "doctor.main"]}
