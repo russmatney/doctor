@@ -27,12 +27,18 @@
    ["/screenshots" {:name :page/screenshots}]
    ["/wallpapers" {:name :page/wallpapers}]])
 
+(defn default-main []
+  [:div
+   [:p.text-city-pink-100.p-4
+    "No app selected, defaulting..."]
+   [views.screenshots/widget]
+   ])
+
+
 (defn home [main]
   (let [params            (router/use-route-parameters)
-        main              (or main [:div
-                                    [:p.text-city-pink-100.p-4
-                                     "No app selected, defaulting..."]
-                                    [views.screenshots/widget]])
+        main              (or main default-main)
+        ;; fallback main disabled for now, seems to some issue mounting/unmounting defhandlers
         current-page-name (-> router/*match* uix/context :data :name)]
     [:div
      {:class ["bg-city-blue-900"
@@ -52,7 +58,7 @@
                                 [:page/counter "Counter"]
                                 [:page/wallpapers "Wallpapers"]
                                 [:page/screenshots "Screenshots"]]]
-         ^{:key (:route page-name)}
+         ^{:key page-name}
          [:a {:class (when (#{current-page-name} page-name)
                        ["text-city-pink-400"
                         "text-bold"])
@@ -61,7 +67,7 @@
                      "text-city-pink-100" "text-xl"]}
        [:p (str "Router:" (clj->js (uix/context router/*router*)))]
        [:p (str "Match: "  @params)]]]
-     main]))
+     (when main [main])]))
 
 (defn counter []
   (let [page-name (-> router/*match* uix/context :data :name)
@@ -77,10 +83,10 @@
     (case page-name
       :page/home        [home nil]
       :page/dock        [views.dock/widget]
-      :page/dock-bg     [home [views.dock/widget]]
-      :page/counter     [home [counter]]
-      :page/screenshots [home [views.screenshots/widget]]
-      :page/wallpapers  [home [views.wallpapers/widget]]
+      :page/dock-bg     [home views.dock/widget]
+      :page/counter     [home counter]
+      :page/screenshots [home views.screenshots/widget]
+      :page/wallpapers  [home views.wallpapers/widget]
       [home nil])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -121,6 +127,7 @@
 
 (defn ^:export init
   []
+  (dev-setup)
   (plasma.client/use-transport!
     (plasma.client/websocket-transport
       ws-url
@@ -129,5 +136,4 @@
        :on-error               on-error
        :transit-write-handlers tlt/write-handlers
        :transit-read-handlers  tlt/read-handlers}))
-  (dev-setup)
   (mount-root))
