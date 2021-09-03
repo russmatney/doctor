@@ -496,7 +496,7 @@
         [:div
          ;; TODO seems a bit overactive...
          [:span
-          (some->> @time (t.format/format (t.format/formatter "mm/dd HH:MM")))]
+          (some->> @time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
 
          "|"
          [:span
