@@ -507,8 +507,7 @@
                   "border-city-blue-400"
                   "rounded"
                   "w-1/5"
-                  "text-white"
-                  ]}
+                  "text-white"]}
 
          [:div
           {:class ["text-right"]}
@@ -516,16 +515,14 @@
            (when metadata
              (->>
                metadata
-               (remove (fn [[k v]] (when v (string/includes? v "%"))))
+               (remove (fn [[k v]] (when (and v (string? v)) (string/includes? v "%"))))
                (map (fn [[k v]] (str "[" k " " v "] ")))
-               (apply str)))
-           ]
+               (apply str)))]
           [:div
            (when-let [pcts
                       (->>
                         metadata
-                        (filter (fn [[k v]] (when v (string/includes? v "%"))))
-                        )]
+                        (filter (fn [[k v]] (when (and v (string? v)) (string/includes? v "%")))))]
              (for [[k v] pcts]
                ^{:key k}
                [pie-chart {:label k :value v}]
