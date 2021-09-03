@@ -1,6 +1,14 @@
 #+TITLE: Readme
+#+STARTUP: overview
 
-Doctor
+* Jump in
+- [[file:src/user.clj][user.clj]]
+- [[file:deps.edn][deps.edn]]
+- [[file:.dir-locals.el][.dir-locals.el]]
+- [[file:src/doctor/ui/views/core.cljs][src/doctor/ui/views/core.cljs]]
+- [[file:src/doctor/ui/core.cljs][src/doctor/ui/core.cljs]]
+- [[file:src/doctor/server.clj][src/doctor/server.clj]]
+* Doctor
 
 An event driven db and plasma dashboard for the health and status of your work.
 
@@ -81,10 +89,3 @@ Both of these files are ready to go in this repo, you'll just need a symlink:
 #+begin_src sh
 ln -s ~/russmatney/doctor/doctor-dock-electron.desktop ~/.local/share/applications/.
 #+end_src
-* Jump in
-[[file:src/user.clj][user.clj]]
-[[file:deps.edn][deps.edn]]
-[[file:.dir-locals.el][.dir-locals.el]]
-[[file:src/doctor/ui/views/core.cljs][src/doctor/ui/views/core.cljs]]
-[[file:src/doctor/ui/core.cljs][src/doctor/ui/core.cljs]]
-[[file:src/doctor/server.clj][src/doctor/server.clj]]
