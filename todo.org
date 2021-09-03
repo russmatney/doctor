@@ -1,8 +1,39 @@
 #+TITLE: Todo
+#+STARTUP: overview
 
-
-* [ ] clawe workspaces checkup
-check if clawe's displayed workspace data matches the state returned from
-a clawe cli state-dump binding
+* garden file
+[[org:garden/workspaces/doctor.org][Doctor Garden File]]
 * [ ] todo health checkup
 repo todos collected from source code and todo.org files
+
+doctor/todos
+============
+
+** Todos from opt-in org files.
+
+** List all org files, including from repos
+
+** Pull from their todos
+supports 'modes'
+easily toggle files pooling the todos on and off
+* [ ] create a wallpaper app
+
+doctor/wallpaper
+================
+
+** A full-stack widget for viewing and updating your wallpaper
+
+** Similar to the screenshot app
+
+** supports writing to your awesome.wm theme file
+could probably reach for alot of other things too
+maybe a generic ralphie/background that tries to be more agnostic
+
+* [ ] top bar app
+
+doctor/topbar
+================
+
+ughly systray <> Date Time Host >< Spotify
+
+** manages itself
