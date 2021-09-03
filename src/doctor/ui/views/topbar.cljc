@@ -258,9 +258,7 @@
 
          (= "Alacritty" class)
          {:color "text-city-green-600"
-          :icon  [:img {:src "/assets/candy-icons/Alacritty.svg"}]
-          ;; :icon  octicons/terminal16
-          }
+          :src   "/assets/candy-icons/Alacritty.svg"}
 
          (= "Spotify" class)
          {:color "text-city-green-400"
@@ -323,8 +321,7 @@
    (defn client-icons
      ([clients] (client-icons {} clients))
      ([{:client/keys [client-hovered client-unhovered]
-        :keys        [workspace]
-        } clients]
+        :keys        [workspace]} clients]
       (when (seq clients)
         [:div
          {:class ["flex" "flex-row"]}
@@ -346,16 +343,14 @@
                           color   color
                           :else   "text-city-blue-400")
 
-                        "text-xl"
-                        "p-2"
                         "border"
                         "rounded"
                         (cond focused "border-city-orange-400")
                         (cond focused "border-opacity-70"
                               :else   "border-opacity-0")]}
-               (cond src   [:img {:class ["w-8"]
+               (cond src   [:img {:class ["w-6"]
                                   :src   src}]
-                     icon  [:div {:class ["text-3xl"]} icon]
+                     icon  [:div {:class ["text-2xl"]} icon]
                      :else c-name)]]))]))))
 
 #?(:cljs
@@ -374,15 +369,17 @@
                     awesome.tag/clients
                     awesome.tag/selected
                     awesome.tag/urgent
-                    git/dirty?
-                    git/needs-push?
-                    git/needs-pull?
+                    ;; git/dirty?
+                    ;; git/needs-push?
+                    ;; git/needs-pull?
                     ]} wsp
             hovering?  (= @hovered-workspace wsp)
             ]
         [:div
          {:class
-          ["m-1" "p-2"
+          ["flex" "flex-row" "justify-center"
+           "max-h-8"
+           "m-1" "p-1"
            "border"
            "border-city-blue-600"
            "rounded"
@@ -403,8 +400,7 @@
             [client-icons (assoc opts :workspace wsp) clients]
 
             [:div
-             {:class [
-                      "font-nes" "text-md"
+             {:class ["font-nes" "text-xs"
                       (when show-name "px-2")
                       (when show-name "pl-3")
                       (when-not show-name "w-0")
@@ -425,15 +421,18 @@
                  {:class [(when show "pl-2")]}
                  (when show
                    (str "(" index ")"))])]
-             (when (or needs-push? needs-pull? dirty?)
-               [:div
-                {:class ["text-xs" "pt-2" "flex-wrap" "flex-col"
-                         (cond
-                           (or urgent (not selected)) "text-city-red-300"
-                           :else                      "text-yo-blue-300")]}
-                [:div (when needs-push? "#needs-push")]
-                [:div (when needs-pull? "#needs-pull")]
-                [:div (when dirty? "#dirty")]])]])
+
+             ;; TODO re-impl git statuses using badges?
+             ;; (when (or needs-push? needs-pull? dirty?)
+             ;;   [:div
+             ;;    {:class ["text-xs" "pt-2" "flex-wrap" "flex-col"
+             ;;             (cond
+             ;;               (or urgent (not selected)) "text-city-red-300"
+             ;;               :else                      "text-yo-blue-300")]}
+             ;;    [:div (when needs-push? "#needs-push")]
+             ;;    [:div (when needs-pull? "#needs-pull")]
+             ;;    [:div (when dirty? "#dirty")]])
+             ]])
 
          (when hovering?
            [:div
@@ -476,8 +475,7 @@
 
         ;; left side (workspaces)
         [:div
-         {:class [
-                  "flex" "flex-row"
+         {:class ["flex" "flex-row"
                   "justify-center"
                   "overflow-hidden"]}
          (for [[i it] (->> items (map-indexed vector))]
