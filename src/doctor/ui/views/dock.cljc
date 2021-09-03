@@ -162,13 +162,9 @@
            handle-resp (fn [new-wsps]
                          (swap! workspaces
                                 (fn [_wsps]
-                                  (->>
-                                    (concat
-                                      ;; TODO work around this keeping the 'old' ones
-                                      ;; (or wsps [])
-                                      new-wsps)
-                                    (w/distinct-by :workspace/title)
-                                    (sort-by :awesome.tag/index)))))]
+                                  (->> new-wsps
+                                       (w/distinct-by :workspace/title)
+                                       (sort-by :awesome.tag/index)))))]
 
        (with-rpc [] (get-workspaces) handle-resp)
        (with-stream [] (workspaces-stream) handle-resp)

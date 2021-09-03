@@ -49,9 +49,7 @@
          :where
          [?e :org/name ?name]
          [?e :org/id ?id]]
-       (:org/name --i))
-     )
-   )
+       (:org/name --i))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; org helpers
@@ -65,47 +63,64 @@
 #?(:clj
    (comment
      (parse-created-at "20210712:163730")
-     (t/parse "20210712:163730" (t/format "yyyyMMdd:hhmmss"))
-     )
-   )
+     (t/parse "20210712:163730" (t/format "yyyyMMdd:hhmmss"))))
 
 #?(:clj
    (defn org-item->todo
-     [{:org/keys      [name source-file]
+     [{:org/keys      [name source-file status]
        :org.prop/keys [created-at]
        :as            item}]
      (->
        item
        (assoc :todo/name name
-              :todo/source-file (string/replace-first source-file "/home/russ/todo/" "")
-              :todo/created-at (parse-created-at created-at)))))
+              :todo/file-name (str (-> source-file fs/parent fs/file-name) "/" (fs/file-name source-file))
+              :todo/created-at (parse-created-at created-at)
+              :todo/status status))))
 
 #?(:clj
    (comment --i))
 
+#?(:clj
+   (defn org-file-paths []
+     (concat
+       (->>
+         ["~/russmatney/{doctor,clawe,org-crud}/{readme,todo}.org"
+          "~/todo/{journal,projects}.org"]
+         (mapcat #(-> %
+                      r.zsh/expand
+                      (string/split #" ")))))))
 
 #?(:clj
    (defn build-todos []
-     (->
-       "~/todo/{journal,projects}.org"
-       r.zsh/expand
-       (string/split #" ")
-       (->>
-         (map fs/file)
-         (mapcat org-crud/path->flattened-items)
-         (filter :org/status)
-         (map org-item->todo)
-         (map #(merge % (get-todo-db %)))
-         (sort-by :db/id)
-         reverse))))
+     (->> (org-file-paths)
+          (map fs/file)
+          (filter fs/exists?)
+          (mapcat org-crud/path->flattened-items)
+          (filter :org/status) ;; this is set for org items with a todo state
+          (map org-item->todo)
+          (map #(merge % (get-todo-db %))))))
 
 #?(:clj
    (comment
-     (->
-       "~/todo/{journal,projects}.org"
-       r.zsh/expand)
-     )
-   )
+     (->> (build-todos)
+          (filter :todo/status)
+          (group-by :todo/status)
+          (map (fn [[s xs]]
+                 [s (count xs)])))
+
+     (some->>
+       (db/query
+         '[:find (pull ?e [*])
+           :where
+           [?e :todo/status :status/in-progress]]))))
+
+#?(:clj
+   (defn sorted-todos []
+     (->> (build-todos)
+          (sort-by :db/id)
+          reverse
+          (sort-by :todo/status)
+          (sort-by (comp not #{:status/in-progress} :todo/status)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; get-todos
@@ -155,12 +170,57 @@
   (open-in-emacs {}))
 
 (defhandler add-to-db [item]
-  (def --i item)
   (println "upserting-to-db" item)
   (upsert-todo-db item)
   (update-todos)
   :ok
   )
+
+(defhandler mark-complete [item]
+  (println "marking-complete" item)
+  (-> item
+      (assoc :todo/status :status/done)
+      upsert-todo-db)
+  (update-todos)
+  :ok
+  )
+
+(defhandler mark-in-progress [item]
+  (println "marking-in-progress" item)
+  (def --i item)
+  (-> item
+      (assoc :todo/status :status/in-progress)
+      (assoc :todo/status :status/in-progress)
+      upsert-todo-db)
+  (update-todos)
+  :ok
+  )
+
+(comment
+  (-> --i
+      (assoc :todo/status :status/in-progress)
+      upsert-todo-db
+      )
+
+  (get-todo-db --i)
+  )
+
+(defhandler mark-not-started [item]
+  (println "marking-not-started" item)
+  (-> item
+      (assoc :todo/status :status/not-started)
+      upsert-todo-db)
+  (update-todos)
+  :ok
+  )
+
+(defhandler mark-cancelled [item]
+  (println "marking-cancelled" item)
+  (-> item
+      (assoc :todo/status :status/cancelled)
+      upsert-todo-db)
+  (update-todos)
+  :ok)
 
 #?(:cljs
    (defn ->actions [item]
@@ -171,7 +231,15 @@
           {:action/label    "open-in-emacs"
            :action/on-click #(open-in-emacs item)}
           {:action/label    "add-to-db"
-           :action/on-click #(add-to-db item)}]
+           :action/on-click #(add-to-db item)}
+          {:action/label    "mark-complete"
+           :action/on-click #(mark-complete item)}
+          {:action/label    "mark-in-progress"
+           :action/on-click #(mark-in-progress item)}
+          {:action/label    "mark-not-started"
+           :action/on-click #(mark-not-started item)}
+          {:action/label    "mark-cancelled"
+           :action/on-click #(mark-cancelled item)}]
          (remove nil?)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -193,8 +261,8 @@
      [{:keys [on-select is-selected?]} item]
      (let [{:db/keys   [id]
             :org/keys  [body urls]
-            :todo/keys [name created-at source-file]} item
-           hovering?                                  (uix/state false)]
+            :todo/keys [status name created-at file-name]} item
+           hovering?                                       (uix/state false)]
        [:div
         {:class          ["m-1" "p-4"
                           "border" "border-city-blue-600"
@@ -205,27 +273,44 @@
          :on-mouse-enter #(reset! hovering? true)
          :on-mouse-leave #(reset! hovering? false)}
 
-        name
+        [:div
+         {:class ["flex" "justify-between"]}
+         [:div
+          (case status
+            :status/done        [:div "done"]
+            :status/not-started [:div "not started"]
+            :status/in-progress [:div "in progress"]
+            :status/cancelled   [:div "cancelled"]
+            [:div "no status"])]
+
+         (when-let [actions (->actions item)]
+           [:div
+            {:class ["flex" "flex-row" "flex-wrap"]}
+            (for [[i ax] (map-indexed vector actions)]
+              ^{:key i}
+              [:div
+               {:class    ["px-2" "mx-2"
+                           "cursor-pointer"
+                           "hover:text-city-blue-300"
+                           "rounded"
+                           "border"
+                           "border-city-blue-700"
+                           "hover:border-city-blue-300"]
+                :on-click (fn [_] ((:action/on-click ax)))}
+               (:action/label ax)])])]
+
+        [:span
+         {:class ["text-xl"]}
+         name]
 
         (when created-at
           [:div
            {:class ["font-mono"]}
            created-at])
 
-        (when-let [actions (->actions item)]
-          [:div
-           (for [[i ax] (map-indexed vector actions)]
-             ^{:key i}
-             [:div
-              {:class    ["cursor-pointer"
-                          "hover:text-yo-blue-300"]
-               :on-click (fn [_] ((:action/on-click ax)))}
-              (:action/label ax)
-              ])])
-
         [:div
          {:class ["font-mono"]}
-         source-file]
+         file-name]
 
         (when id
           [:div
@@ -257,16 +342,12 @@
                           "hover:text-yo-blue-400"
                           ]
                   :href  url}
-              url]
-             )]
-
-          )
-        ])))
+              url])])])))
 
 #?(:cljs
    (defn selected-node
      [{:org/keys  [body urls]
-       :todo/keys [name source-file]}]
+       :todo/keys [name file-name]}]
 
      [:div
       {:class ["flex" "flex-col" "p-2"]}
@@ -276,7 +357,7 @@
 
       [:span
        {:class ["font-mono" "text-xl" "text-city-green-200" "p-2"]}
-       source-file]
+       file-name]
 
       (when (seq body)
         [:div
@@ -306,26 +387,75 @@
             url])])]))
 
 #?(:cljs
+   (defn split-counts [items]
+     (let [bys [{:group-by :todo/file-name
+                 :label    "Source File"}
+                {:group-by :todo/status
+                 :label    "Status"}
+                {:group-by (comp boolean :db/id)
+                 :label    "DB"}]]
+       [:div.flex.flex-row.flex-wrap
+
+        (for [[i by] (map-indexed vector bys)]
+          (let [split (->> items
+                           (group-by (:group-by by))
+                           (map (fn [[v xs]] [v (count xs)])))]
+            ^{:key i}
+            [:div
+             {:class [(when-not (zero? i) "px-8")]}
+             [:div.text-xl.font-nes (:label by)]
+             [:div
+              (for [[k v] (->> split (sort-by second))]
+                ^{:key k}
+                [:div
+                 {:class    ["flex" "font-mono"
+                             "cursor-pointer"
+                             "hover:text-city-red-600"
+                             ]
+                  :on-click #(js/alert (str by " - " k " : " v))}
+                 [:span.p-1.text-xl v]
+                 [:span.p-1.text-xl (str k)]])]]))])))
+
+#?(:cljs
    (defn widget []
      (let [{:keys [items]} (use-todos)
-           selected        (uix/state (first items)) ]
+           selected        (uix/state (first items))
+
+           item-groups (->> items
+                            (group-by :todo/status)
+                            (map (fn [[status its]]
+                                   {:item-group its
+                                    :label      status})))]
        [:div
         {:class ["flex" "flex-col" "flex-wrap"
                  "overflow-hidden"
-                 "min-h-screen"]}
+                 "min-h-screen"
+                 "text-city-pink-200"]}
 
         [:div
-         {:class ["font-nes" "text-xl" "text-city-green-200" "p-4"]}
-         (str (count items) " Todos, " (count (->> items (filter :db/id))) " in db")]
+         {:class ["p-4"]}
+         [split-counts items]]
 
+        ;; TODO move 'selected' to 'current'?
         (when @selected
           (selected-node @selected))
 
-        [:div
-         {:class ["flex" "flex-col" "flex-wrap" "justify-center"]}
-         (for [[i it] (->> items (map-indexed vector))]
-           ^{:key i}
-           [todo
-            {:on-select    (fn [_] (reset! selected it))
-             :is-selected? (= @selected it)}
-            (assoc it :index i)])]])))
+        ;; TODO group/filter by file-name
+        ;; TODO group/filter by status
+        ;; TODO group/filter by tag
+        ;; TODO group/filter by scheduled-date
+        ;; TODO opt-in/out of files
+
+        (for [[i {:keys [item-group label]}] (map-indexed vector item-groups)]
+          ^{:key i}
+          [:div
+           {:class ["flex" "flex-col" "flex-wrap" "justify-center"]}
+           [:div
+            {:class ["text-2xl" "p-2" "pt-4"]}
+            label]
+           (for [[i it] (->> item-group (map-indexed vector))]
+             ^{:key i}
+             [todo
+              {:on-select    (fn [_] (reset! selected it))
+               :is-selected? (= @selected it)}
+              (assoc it :index i)])])])))

@@ -3,19 +3,6 @@
 
 * garden file
 [[org:garden/workspaces/doctor.org][Doctor Garden File]]
-* [ ] todo health checkup
-repo todos collected from source code and todo.org files
-
-doctor/todos
-============
-
-** Todos from opt-in org files.
-
-** List all org files, including from repos
-
-** Pull from their todos
-supports 'modes'
-easily toggle files pooling the todos on and off
 * [ ] top bar app
 
 doctor/topbar
