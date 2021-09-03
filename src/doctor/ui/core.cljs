@@ -12,13 +12,8 @@
    [uix.dom.alpha :as uix.dom]
 
    [doctor.ui.views.dock :as views.dock]
-   [doctor.ui.views.screenshots :as views.screenshots]))
-
-(defn root []
-  [:div
-   {:class ["bg-yo-blue-500" "min-h-screen"]}
-
-   [views.dock/widget]])
+   [doctor.ui.views.screenshots :as views.screenshots]
+   [doctor.ui.views.wallpapers :as views.wallpapers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; routes, home
@@ -29,17 +24,44 @@
    ["/dock" {:name :page/dock}]
    ["/dock-bg" {:name :page/dock-bg}]
    ["/counter" {:name :page/counter}]
-   ["/screenshots" {:name :page/screenshots}]])
+   ["/screenshots" {:name :page/screenshots}]
+   ["/wallpapers" {:name :page/wallpapers}]])
 
-(defn home []
-  (let [params (router/use-route-parameters)]
+(defn home [main]
+  (let [params            (router/use-route-parameters)
+        main              (or main [:div
+                                    [:p.text-city-pink-100.p-4
+                                     "No app selected, defaulting..."]
+                                    [views.screenshots/widget]])
+        current-page-name (-> router/*match* uix/context :data :name)]
     [:div
-     [:div {:class ["flex" "flex-col"]}
-      [:a {:href (router/href :page/chess)} "Chess"]
-      [:a {:href (router/href :page/dock)} "Dock"]
-      [:a {:href (router/href :page/counter)} "Counter"]]
-     [:p (str "Router:" (clj->js (uix/context router/*router*)))]
-     [:p (str "Match: "  @params)]]))
+     {:class ["bg-city-blue-900"
+              "min-h-screen"
+              "min-w-100"]}
+     [:div
+      {:class ["flex" "flex-row"
+               "space-between"
+               "min-w-100"]}
+      [:div {:class ["flex" "flex-col" "p-6"
+                     "text-city-pink-100"
+                     "text-xxl"
+                     "font-nes"]}
+       (for [[page-name label] [[:page/home "Home"]
+                                [:page/dock "Dock"]
+                                [:page/dock-bg "Dock Bg"]
+                                [:page/counter "Counter"]
+                                [:page/wallpapers "Wallpapers"]
+                                [:page/screenshots "Screenshots"]]]
+         ^{:key (:route page-name)}
+         [:a {:class (when (#{current-page-name} page-name)
+                       ["text-city-pink-400"
+                        "text-bold"])
+              :href  (router/href page-name)} label])]
+      [:div {:class ["flex" "flex-col" "p-6"
+                     "text-city-pink-100" "text-xl"]}
+       [:p (str "Router:" (clj->js (uix/context router/*router*)))]
+       [:p (str "Match: "  @params)]]]
+     main]))
 
 (defn counter []
   (let [page-name (-> router/*match* uix/context :data :name)
@@ -51,13 +73,15 @@
 (defn view
   []
   (let [page-name (-> router/*match* uix/context :data :name)]
+    (println "page-name" page-name)
     (case page-name
-      :page/home        [home]
-      :page/dock-bg     [root]
+      :page/home        [home nil]
       :page/dock        [views.dock/widget]
-      :page/counter     [counter]
-      :page/screenshots [views.screenshots/widget]
-      [home])))
+      :page/dock-bg     [home [views.dock/widget]]
+      :page/counter     [home [counter]]
+      :page/screenshots [home [views.screenshots/widget]]
+      :page/wallpapers  [home [views.wallpapers/widget]]
+      [home nil])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Websocket events
