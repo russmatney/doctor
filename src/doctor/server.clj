@@ -8,6 +8,7 @@
    [doctor.time-literals-transit :as tlt]
    [doctor.ui.views.dock :as dock]
    [doctor.ui.views.screenshots :as screenshots]
+   [doctor.ui.views.wallpapers :as wallpapers]
    [cognitect.transit :as transit]
    [ring.adapter.undertow :as undertow]
    [ring.adapter.undertow.websocket :as undertow.ws]))
@@ -43,7 +44,8 @@
   :extra-deps
   [dock/*workspaces-stream*
    dock/*dock-metadata-stream*
-   screenshots/*screenshots-stream*]
+   screenshots/*screenshots-stream*
+   wallpapers/*wallpapers-stream*]
   :start
   (let [port (:server/port config/*config*)]
     (log/info "Starting *server* on port" port)
