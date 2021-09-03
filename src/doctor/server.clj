@@ -61,17 +61,17 @@
         (cond
           (= uri "/topbar/update")
           (do
+            (topbar/update-topbar)
             (dock/update-dock)
             (dock/update-dock-metadata)
-            (topbar/update-topbar)
             (topbar/update-topbar-metadata)
             {:status 200 :body "updated dock and topbar"})
 
           (= uri "/dock/update")
           (do
+            (topbar/update-topbar)
             (dock/update-dock)
             (dock/update-dock-metadata)
-            (topbar/update-topbar)
             (topbar/update-topbar-metadata)
             {:status 200 :body "updated dock and topbar"})
 
