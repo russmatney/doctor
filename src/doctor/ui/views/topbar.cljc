@@ -136,7 +136,7 @@
 (defhandler hide-workspace [item]
   (println "hide wsp" (:name item))
   (->
-    ;; TODO support non scratchpad workspaces
+    ;; TODO support non scratchpad workspaces - could be a quick awm-fnl show-only
     item
     ;; :name
     ;; clawe.workspaces/for-name
@@ -169,7 +169,8 @@
          (lume.first)
          ((fn [c]
             (tset c :above true)
-            (tset c :below false)))))
+            (tset c :below false)
+            (tset c :ontop true)))))
     (awm/awm-fnl
       '(->
          (client.get)
@@ -177,30 +178,9 @@
          (lume.first)
          ((fn [c]
             (tset c :above false)
-            (tset c :below true))))))
+            (tset c :below true)
+            (tset c :ontop false))))))
   above?)
-
-(defhandler bring-topbar-above []
-  (println "bring topbar above")
-  (awm/awm-fnl
-    '(->
-       (client.get)
-       (lume.filter (fn [c] (= c.name "clover/doctor-topbar")))
-       (lume.first)
-       ((fn [c]
-          (tset c :above true)
-          (tset c :below false))))))
-
-(defhandler push-topbar-below []
-  (println "push topbar below")
-  (awm/awm-fnl
-    '(->
-       (client.get)
-       (lume.filter (fn [c] (= c.name "clover/doctor-topbar")))
-       (lume.first)
-       ((fn [c]
-          (tset c :above false)
-          (tset c :below true))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend Data contexts
@@ -550,14 +530,12 @@
 #?(:cljs
    (defn detail-window [{:keys [active-workspaces hovered-workspace]} metadata]
      [:div
-      {:class ["m-6" "p-6"
+      {:class ["m-6" "ml-auto" "p-6"
                "bg-yo-blue-500"
                "border-city-blue-400"
                "rounded"
-               "w-1/5"
-               "text-white"
-               "text-right"
-               ]}
+               "w-1/2"
+               "text-white"]}
 
       (when (or (seq active-workspaces) hovered-workspace)
         (for [wsp (if hovered-workspace [hovered-workspace] active-workspaces)]
@@ -668,55 +646,57 @@
        ;; TODO kill/reuse to prevent loading up too many timers
        (js/setTimeout
          #(reset! time (t/zoned-date-time))
-         10000)
+         100000)
        [:div
-        {:class ["flex" "flex-row"
-                 "justify-between"
-                 "min-h-screen"
+        {:class ["min-h-screen"
                  "max-h-screen"
                  "overflow-hidden"
                  "text-city-pink-200"]}
-        ;; above/below toggle bar
         [:div
-         {:class         ["absolute" "top-0" "left-0" "right-0" "bg-black"
-                          (if @topbar-above "opacity-10" "opacity-0")]
-          :on-mouse-over (fn [e]
-                           ;; don't fire when at the very top, only on the way there
-                           (when (> e.pageY 7)
-                             (-> (toggle-topbar-above (not @topbar-above))
-                                 (.then (fn [v] (reset! topbar-above v))))))
-          :style         {:z-index 0}}
-         [:span {:class "opacity-0"} "|"]]
+         {:class ["flex" "flex-row"
+                  "justify-between"]}
+         ;; above/below toggle bar
+         [:div
+          {:class         ["absolute" "top-0" "left-0" "right-0" "bg-black"
+                           (if @topbar-above "opacity-10" "opacity-0")]
+           :on-mouse-over (fn [e]
+                            ;; don't fire when at the very top, only on the way there
+                            (when (> e.pageY 7)
+                              (-> (toggle-topbar-above (not @topbar-above))
+                                  (.then (fn [v] (reset! topbar-above v))))))
+           :style         {:z-index 0}}
+          [:span {:class "opacity-0"} "|"]]
 
-        ;; left side (workspaces)
-        [workspace-list opts (->> items (remove :workspace/scratchpad))]
-        [workspace-list opts (->> items (filter :workspace/scratchpad))]
-        [client-list opts active-clients]
+         ;; left side (workspaces)
+         [workspace-list opts (->> items (remove :workspace/scratchpad))]
+         [workspace-list opts (->> items (filter :workspace/scratchpad))]
+         [client-list opts active-clients]
 
-        ;; clock/host
-        [:div
-         ;; TODO seems a bit overactive...
-         [:span
-          (some->> @time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
+         ;; clock/host
+         [:div
+          ;; TODO seems a bit overactive...
+          [:span
+           (some->> @time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
 
-         "|"
-         [:span
-          (:hostname metadata)]]
+          "|"
+          [:span
+           (:hostname metadata)]]
 
-        ;; current todos
-        (let [ct (-> metadata :todos/in-progress count)]
-          [:div
-           (if (zero? ct)
-             "No in-progress todos"
-             (str ct " in-progress todo(s)"))])
+         ;; current todos
+         (let [ct (-> metadata :todos/in-progress count)]
+           [:div
+            (if (zero? ct)
+              "No in-progress todos"
+              (str ct " in-progress todo(s)"))])
 
-        ;; TODO call update-topbar-metadata when todos get updated?
-        ;; for now it gets called by various things already
-        (when (:todos/latest metadata)
-          (let [{:todo/keys [name]} (:todos/latest metadata)]
-            [:div "Current: " name]))
+         ;; TODO call update-topbar-metadata when todos get updated?
+         ;; for now it gets called by various things already
+         (when (:todos/latest metadata)
+           (let [{:todo/keys [name]} (:todos/latest metadata)]
+             [:div {:class ["font-mono"]}
+              "Current Task: "
+              [:span name]]))]
 
         ;; right side
-
         [detail-window
          (assoc opts :active-workspaces active-workspaces) metadata]])))
