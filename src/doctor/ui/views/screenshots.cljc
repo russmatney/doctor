@@ -40,7 +40,6 @@
    (defn use-screenshots []
      (let [screenshots (plasma.uix/state [])
            handle-resp (fn [new-items]
-                         (println "new-items" (count new-items))
                          (swap! screenshots
                                 (fn [_]
                                   (->> new-items (w/distinct-by :file/full-path)))))]
@@ -76,8 +75,7 @@
           :on-mouse-leave #(do (reset! hovering? false))}
          (when web-asset-path
            [:img {:src   web-asset-path
-                  :class ["max-w-xl"
-                          "max-h-72"]}])
+                  :class ["max-h-100"]}])
 
          [:div
           (for [ax (->actions item)]
@@ -92,7 +90,7 @@
    (defn widget []
      (let [{:keys [items]} (use-screenshots)]
        [:div
-        {:class ["flex" "flex-row" "flex-wrap"
+        {:class ["flex" "flex-row" "flex-wrap" "flex-auto"
                  "min-h-screen"
                  "overflow-hidden"
                  "bg-yo-blue-700"
