@@ -18,6 +18,8 @@
               [uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
               [hiccup-icons.octicons :as octicons]
+              [hiccup-icons.fa :as fa]
+              [hiccup-icons.fa4 :as fa4]
               [hiccup-icons.mdi :as mdi]
               [tick.alpha.api :as t]
               [tick.format :as t.format]
@@ -213,25 +215,16 @@
 
 #?(:cljs
    (defn ->actions [item]
-     (let [{:keys [
-                   ;; workspace/title
-                   ;; git/repo
-                   ;; workspace/directory
-                   ;; workspace/color
-                   ;; workspace/title-hiccup
-                   ;; workspace/scratchpad
-                   ;; awesome.tag/index
-                   ;; awesome.tag/clients
-                   ;; awesome.tag/urgent
-                   awesome.tag/selected
-                   ]} item]
+     (let [{:keys [awesome.tag/selected]} item]
        (->>
          [(when selected
             {:action/label    "hide"
-             :action/on-click #(hide-workspace item)})
+             :action/on-click #(hide-workspace item)
+             :action/icon     {:icon fa/eye-slash}})
           (when-not selected
             {:action/label    "show"
-             :action/on-click #(show-workspace item)})]
+             :action/on-click #(show-workspace item)
+             :action/icon     {:icon fa/eye}})]
          (remove nil?)))))
 
 #?(:cljs
@@ -318,40 +311,82 @@
            {:icon octicons/question16})))))
 
 #?(:cljs
+   (defn bar-icon
+     [{:keys [color icon src
+              on-mouse-over
+              on-mouse-out
+              fallback-text
+              classes
+              border?]}]
+     [:div
+      {:on-mouse-over on-mouse-over
+       :on-mouse-out  on-mouse-out
+       :class         ["flex" "flex-row" "items-center"]}
+      [:div
+       {:class (concat (when border? ["border"]) [color] classes)}
+       (cond
+         src   [:img {:class ["w-10"] :src src}]
+         icon  [:div {:class ["text-3xl"]} icon]
+         :else fallback-text)]]))
+
+#?(:cljs
    (defn client-icons
      ([clients] (client-icons {} clients))
      ([{:client/keys [client-hovered client-unhovered]
         :keys        [workspace]} clients]
       (when (seq clients)
         [:div
-         {:class ["flex" "flex-row"]}
+         {:class ["flex" "flex-row" "flex-wrap"]}
          (for [c (->> clients
-                      ;; (remove (comp #(= "clover/doctor-topbar" %) :awesome.client/name))
+                      (remove (comp #(#{"clover/doctor-dock" "clover/doctor-topbar"} %) :awesome.client/name))
                       )]
            (let [c-name                                  (->> c :awesome.client/name (take 15) (apply str))
                  {:awesome.client/keys [urgent focused]} c
-                 {:keys [color icon src]}                (client->icon c workspace)]
+                 {:keys [color] :as icon-def}            (client->icon c workspace)]
              ^{:key (or (:window c) c-name)}
-             [:div
-              {:on-mouse-over #(do (client-hovered c))
-               :on-mouse-out  #(do (client-unhovered c))
-               :class         ["flex" "flex-row" "items-center"]}
-              [:div
-               {:class [(cond
-                          focused "text-city-orange-400"
-                          urgent  "text-city-red-400"
-                          color   color
-                          :else   "text-city-blue-400")
+             [bar-icon (-> icon-def
+                           (assoc
+                             :on-mouse-over #(do (client-hovered c))
+                             :on-mouse-out  #(do (client-unhovered c))
+                             :fallback-text c-name
+                             :color color
+                             :classes [
+                                       (cond focused "bg-city-orange-400")
+                                       (cond focused "bg-opacity-10")
+                                       (cond focused "border-opacity-20"
+                                             :else   "border-opacity-0")
+                                       (cond
+                                         focused "text-city-orange-400"
+                                         urgent  "text-city-red-400"
+                                         color   color
+                                         :else   "text-city-blue-400")]
+                             :border? true))]))]))))
 
-                        "border"
-                        "rounded"
-                        (cond focused "border-city-orange-400")
-                        (cond focused "border-opacity-70"
-                              :else   "border-opacity-0")]}
-               (cond src   [:img {:class ["w-6"]
-                                  :src   src}]
-                     icon  [:div {:class ["text-2xl"]} icon]
-                     :else c-name)]]))]))))
+#?(:cljs
+   (defn git-icons
+     [{:keys [git/dirty?
+              git/needs-push?
+              git/needs-pull?]}]
+
+     (when (or needs-push? needs-pull? dirty?)
+       [:div
+        {:class ["flex" "flex-wrap" "flex-row"
+                 "text-yo-blue-300"]}
+        (when needs-push?
+          [bar-icon
+           {:icon    mdi/doctor
+            :color   "text-city-red-400"
+            :tooltip "Needs Push"}])
+        (when needs-pull?
+          [bar-icon
+           {:icon    mdi/doctor
+            :color   "text-city-blue-500"
+            :tooltip "Needs Pull"}])
+        (when dirty?
+          [bar-icon
+           {:icon    mdi/doctor
+            :color   "text-city-green-500"
+            :tooltip "Dirty"}])])))
 
 #?(:cljs
    (defn workspace-comp
@@ -368,26 +403,19 @@
                     workspace/scratchpad
                     awesome.tag/clients
                     awesome.tag/selected
-                    awesome.tag/urgent
-                    ;; git/dirty?
-                    ;; git/needs-push?
-                    ;; git/needs-pull?
-                    ]} wsp
-            hovering?  (= @hovered-workspace wsp)
-            ]
+                    awesome.tag/urgent]} wsp
+
+            hovering? (= @hovered-workspace wsp)]
         [:div
          {:class
           ["flex" "flex-row" "justify-center"
-           "max-h-8"
-           "m-1" "p-1"
-           "border"
-           "border-city-blue-600"
-           "rounded"
+           "max-h-24"
+           "px-2"
+           "border" "border-city-blue-600" "rounded"
            "border-opacity-50"
            "bg-yo-blue-800"
-           (cond
-             selected "bg-opacity-60"
-             :else    "bg-opacity-10")
+           (cond selected "bg-opacity-60"
+                 :else    "bg-opacity-10")
            "text-white"]
           :on-mouse-enter #(do (bring-topbar-above)
                                (workspace-hovered wsp))
@@ -395,54 +423,53 @@
                                (workspace-unhovered wsp))}
          (let [show-name (or hovering? (not scratchpad) urgent selected (#{0} (count clients)))]
            [:div
-            {:class ["flex" "flex-row"
-                     "items-center"]}
-            [client-icons (assoc opts :workspace wsp) clients]
+            {:class ["flex" "flex-row" "items-center" "justify-center"]}
 
+            ;; name/number
             [:div
-             {:class ["font-nes" "text-xs"
-                      (when show-name "px-2")
-                      (when show-name "pl-3")
+             {:class [(when show-name "px-2")
                       (when-not show-name "w-0")
                       "transition-all"
 
                       (cond
                         urgent   "text-city-red-400"
                         selected "text-city-orange-400"
-                        color    ""
                         :else    "text-yo-blue-300")]
               :style (when (and (not selected) (not urgent) color) {:color color})}
 
              [:div
-              (when show-name title)
-
-              (let [show (and show-name (or hovering? (#{0} (count clients)) (not scratchpad)))]
+              {:class ["font-nes" "text-xs"]}
+              (let [show (and show-name
+                              (or hovering?
+                                  (#{0} (count clients))
+                                  (not scratchpad)))]
                 [:span
-                 {:class [(when show "pl-2")]}
+                 {:class [(when show "pr-2")]}
                  (when show
-                   (str "(" index ")"))])]
+                   (str "(" index ")"))])
 
-             ;; TODO re-impl git statuses using badges?
-             ;; (when (or needs-push? needs-pull? dirty?)
-             ;;   [:div
-             ;;    {:class ["text-xs" "pt-2" "flex-wrap" "flex-col"
-             ;;             (cond
-             ;;               (or urgent (not selected)) "text-city-red-300"
-             ;;               :else                      "text-yo-blue-300")]}
-             ;;    [:div (when needs-push? "#needs-push")]
-             ;;    [:div (when needs-pull? "#needs-pull")]
-             ;;    [:div (when dirty? "#dirty")]])
-             ]])
+              [:span
+               (when show-name title)]]]
 
-         (when hovering?
-           [:div
-            (for [ax (->actions wsp)]
-              ^{:key (:action/label ax)}
+            ;; icons
+            [client-icons (assoc opts :workspace wsp) clients]
+            [git-icons wsp]
+
+            (when hovering?
               [:div
-               {:class    ["cursor-pointer"
-                           "hover:text-yo-blue-300"]
-                :on-click (:action/on-click ax)}
-               (:action/label ax)])])]))))
+               {:class ["flex" "flex-wrap" "flex-row"
+                        "text-yo-blue-300"]}
+               (for [ax (->actions wsp)]
+                 (do
+                   (println "ax" ax)
+                   ^{:key (:action/label ax)}
+                   [:div
+                    {:class    ["cursor-pointer"
+                                "hover:text-yo-blue-300"]
+                     :on-click (:action/on-click ax)}
+                    (if (seq (:action/icon ax))
+                      [bar-icon (:action/icon ax)]
+                      (:action/label ax))]))])])]))))
 
 #?(:cljs
    (defn pie-chart
@@ -465,8 +492,7 @@
          #(reset! time (t/zoned-date-time))
          1000)
        [:div
-        {:class ["pl-64"
-                 "flex" "flex-row"
+        {:class ["flex" "flex-row"
                  "justify-between"
                  "min-h-screen"
                  "max-h-screen"
@@ -502,12 +528,12 @@
          [:span
           (:hostname metadata)]]
 
-        [:div
-         [:span
-          (:spotify/artist metadata)]
-         ">"
-         [:span
-          (:spotify/song metadata)]]
+        ;; [:div
+        ;;  [:span
+        ;;   (:spotify/artist metadata)]
+        ;;  ">"
+        ;;  [:span
+        ;;   (:spotify/song metadata)]]
 
         (let [ct (-> metadata :todos/in-progress count)]
           [:div
