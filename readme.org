@@ -5,9 +5,18 @@
 - [[file:src/user.clj][user.clj]]
 - [[file:deps.edn][deps.edn]]
 - [[file:.dir-locals.el][.dir-locals.el]]
-- [[file:src/doctor/ui/views/core.cljs][src/doctor/ui/views/core.cljs]]
-- [[file:src/doctor/ui/core.cljs][src/doctor/ui/core.cljs]]
-- [[file:src/doctor/server.clj][src/doctor/server.clj]]
+
+- UI/Core/Home:  [[file:src/doctor/ui/core.cljs][src/doctor/ui/core.cljs]]
+- Backend Server def: [[file:src/doctor/server.clj][src/doctor/server.clj]]
+
+Apps:
+
+- [[file:src/doctor/ui/views/topbar.cljc][Topbar]]
+- [[file:src/doctor/ui/views/todos.cljc][Todos]]
+- Dock file:src/doctor/ui/views/dock.cljc
+- Screenshots file:src/doctor/ui/views/screenshots.cljc
+- Wallpapers file:src/doctor/ui/views/wallpapers.cljc
+- Workspaces file:src/doctor/ui/views/workspaces.cljc
 * Doctor
 
 An event driven db and plasma dashboard for the health and status of your work.
