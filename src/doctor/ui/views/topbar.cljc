@@ -360,10 +360,10 @@
                             :fallback-text c-name
                             :color color
                             :classes [
-                                      (cond focused "bg-city-orange-400")
-                                      (cond focused "bg-opacity-10")
-                                      (cond focused "border-opacity-20"
-                                            :else   "border-opacity-0")
+                                      ;; (cond focused "bg-city-orange-400")
+                                      ;; (cond focused "bg-opacity-10")
+                                      (cond #_focused #_ "border-opacity-20"
+                                            :else     "border-opacity-0")
                                       (cond
                                         focused "text-city-orange-400"
                                         urgent  "text-city-red-400"
@@ -511,11 +511,64 @@
                    (:action/label ax))])])])])))
 
 #?(:cljs
+   (defn- show-chart-fn [canvas-id chart-data]
+     (fn []
+       (let [ctx (.. js/document
+                     (getElementById canvas-id)
+                     (getContext "2d"))]
+
+         (js/Chart. ctx (clj->js chart-data))))))
+
+#?(:cljs
+   (defn chart-component [chart-data]
+     (let [canvas-id  (str (gensym))
+           show-chart (show-chart-fn canvas-id chart-data)
+           chart      (uix/state nil)]
+       (uix/with-effect []
+         (let [c (show-chart)]
+           (reset! chart c)))
+
+       (uix/with-effect [chart-data]
+         (when-let [data (some-> chart-data :data :datasets first :data)]
+           (when-let [^js/Chart c @chart]
+             (aset c "data" "datasets" 0 "data"  (clj->js data))
+             (.update c))))
+
+       [:canvas {:id canvas-id}])))
+
+#?(:cljs
+   (defn parse-int [str]
+     (-> str
+         (string/replace "%" "")
+         js/parseInt)))
+
+#?(:cljs
+   (comment
+     (parse-int "81%")
+     ))
+
+#?(:cljs
    (defn pie-chart
-     "TODO write this pie chart component"
-     [{:keys [label value]}]
-     [:div
-      (str label " " value)]))
+     "Assumes value is a percentage string like '81%'."
+     [{:keys [label value color]}]
+     (let [value     (parse-int value)
+           remaining (- 100 value)]
+       [:div
+        {:class ["p-1"]}
+        [chart-component
+         {:type    :doughnut
+          :data    {:labels [label]
+                    :datasets
+                    [{:label           label
+                      :data            [value remaining]
+                      :backgroundColor [color "rgba(0, 0, 0, 0)"]
+                      :borderWidth     1
+                      :rotation        270
+                      :circumference   180}]}
+          :options {:cutout    "40%"
+                    :plugins   {:legend {:display false}}
+                    :animation {:animateScale  true
+                                :animateRotate true}}}]])))
 
 #?(:cljs
    (defn workspace-list [opts wspcs]
@@ -599,17 +652,7 @@
                        (when (and v (string? v))
                          (string/includes? v "%")))))
            (map (fn [[k v]] (str "[" k " " v "] ")))
-           (apply str)))]
-
-      [:div
-       {:class ["mt-auto"]}
-       (when-let [pcts
-                  (->>
-                    metadata
-                    (filter (fn [[_ v]] (when (and v (string? v)) (string/includes? v "%")))))]
-         (for [[k v] pcts]
-           ^{:key k}
-           [pie-chart {:label k :value v}]))]]))
+           (apply str)))]]))
 
 #?(:cljs
    (defn widget []
@@ -644,9 +687,9 @@
            time (uix/state (t/zoned-date-time))]
        (println "last-hovered-workspace" last-hovered-workspace)
        ;; TODO kill/reuse to prevent loading up too many timers
-       (js/setTimeout
-         #(reset! time (t/zoned-date-time))
-         100000)
+       ;; (js/setTimeout
+       ;;   #(reset! time (t/zoned-date-time))
+       ;;   100000)
        [:div
         {:class ["min-h-screen"
                  "max-h-screen"
@@ -674,20 +717,43 @@
 
          ;; clock/host
          [:div
+          {:class ["flex" "flex-row" "justify-center" "items-center"]}
           ;; TODO seems a bit overactive...
-          [:span
+          [:div
            (some->> @time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
 
           "|"
-          [:span
-           (:hostname metadata)]]
+          [:div
+           (:hostname metadata)]
 
-         ;; current todos
-         (let [ct (-> metadata :todos/in-progress count)]
-           [:div
-            (if (zero? ct)
-              "No in-progress todos"
-              (str ct " in-progress todo(s)"))])
+          "|"
+          [:div
+           (if (:microphone/muted metadata) fa/microphone-slash-solid fa/microphone-solid)]
+
+          "|"
+          [:div
+           {:class ["flex" "flex-row"]}
+           (when-let [pcts
+                      (->>
+                        metadata
+                        (filter (fn [[_ v]] (when (and v (string? v)) (string/includes? v "%")))))]
+             (for [[k v] pcts]
+               ^{:key k}
+               [:div
+                {:class ["w-10"]}
+                [pie-chart {:label (str k) :value v
+                            :color (case k
+                                     :spotify/volume "rgb(255, 205, 86)"
+                                     :audio/volume   "rgb(54, 162, 235)",
+                                     "rgb(255, 99, 132)")}]]))]
+
+          "|"
+          ;; current todos
+          (let [ct (-> metadata :todos/in-progress count)]
+            [:div
+             (if (zero? ct)
+               "No in-progress todos"
+               (str ct " in-progress todo(s)"))])]
 
          ;; TODO call update-topbar-metadata when todos get updated?
          ;; for now it gets called by various things already
