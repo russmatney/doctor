@@ -158,6 +158,28 @@
 ;; Topbar behavior
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defhandler toggle-topbar-above [above?]
+  (println "setting topbar above" above?)
+  (if above?
+    ;; awm-fnl does not yet support passed arguments
+    (awm/awm-fnl
+      '(->
+         (client.get)
+         (lume.filter (fn [c] (= c.name "clover/doctor-topbar")))
+         (lume.first)
+         ((fn [c]
+            (tset c :above true)
+            (tset c :below false)))))
+    (awm/awm-fnl
+      '(->
+         (client.get)
+         (lume.filter (fn [c] (= c.name "clover/doctor-topbar")))
+         (lume.first)
+         ((fn [c]
+            (tset c :above false)
+            (tset c :below true))))))
+  above?)
+
 (defhandler bring-topbar-above []
   (println "bring topbar above")
   (awm/awm-fnl
@@ -347,10 +369,10 @@
        [:div
         {:class ["flex" "flex-row" "flex-wrap"]}
         (for [c (->> clients (remove is-bar-app?))]
-          (let [c-name                                  (->> c :awesome.client/name (take 15) (apply str))
-                {:awesome.client/keys [urgent focused]} c
-                {:keys [color] :as icon-def}            (client->icon c workspace)]
-            ^{:key (or (:window c) c-name)}
+          (let [c-name                                         (->> c :awesome.client/name (take 15) (apply str))
+                {:awesome.client/keys [window urgent focused]} c
+                {:keys [color] :as icon-def}                   (client->icon c workspace)]
+            ^{:key (or window c-name)}
             [bar-icon (-> icon-def
                           (assoc
                             :on-mouse-over #(on-hover-client c)
@@ -547,8 +569,7 @@
                         workspace/title
                         awesome.tag/clients]} wsp
 
-                dir (or directory repo)
-
+                dir     (or directory repo)
                 clients (->> clients (remove is-bar-app?))]
 
             ^{:key title}
@@ -625,6 +646,7 @@
            hovered-workspace      (uix/state nil)
            last-hovered-client    (uix/state nil)
            last-hovered-workspace (uix/state nil)
+           topbar-above           (uix/state true)
 
            opts {:hovered-client         @hovered-client
                  :hovered-workspace      @hovered-workspace
@@ -632,24 +654,21 @@
                  :last-hovered-client    @last-hovered-client
                  :on-hover-workspace     (fn [w]
                                            (reset! last-hovered-workspace w)
-                                           (bring-topbar-above)
                                            (reset! hovered-workspace w))
                  :on-unhover-workspace   (fn [_]
-                                           (push-topbar-below)
                                            (reset! hovered-workspace nil))
                  :on-hover-client        (fn [c]
                                            (reset! last-hovered-client c)
-                                           (bring-topbar-above)
                                            (reset! hovered-client c))
                  :on-unhover-client      (fn [_]
-                                           (push-topbar-below)
                                            (reset! hovered-client nil))}
 
            time (uix/state (t/zoned-date-time))]
        (println "last-hovered-workspace" last-hovered-workspace)
+       ;; TODO kill/reuse to prevent loading up too many timers
        (js/setTimeout
          #(reset! time (t/zoned-date-time))
-         1000)
+         10000)
        [:div
         {:class ["flex" "flex-row"
                  "justify-between"
@@ -657,6 +676,17 @@
                  "max-h-screen"
                  "overflow-hidden"
                  "text-city-pink-200"]}
+        ;; above/below toggle bar
+        [:div
+         {:class         ["absolute" "top-0" "left-0" "right-0" "bg-black"
+                          (if @topbar-above "opacity-10" "opacity-0")]
+          :on-mouse-over (fn [e]
+                           ;; don't fire when at the very top, only on the way there
+                           (when (> e.pageY 7)
+                             (-> (toggle-topbar-above (not @topbar-above))
+                                 (.then (fn [v] (reset! topbar-above v))))))
+          :style         {:z-index 0}}
+         [:span {:class "opacity-0"} "|"]]
 
         ;; left side (workspaces)
         [workspace-list opts (->> items (remove :workspace/scratchpad))]
@@ -687,5 +717,6 @@
             [:div "Current: " name]))
 
         ;; right side
+
         [detail-window
          (assoc opts :active-workspaces active-workspaces) metadata]])))
