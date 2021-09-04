@@ -12,7 +12,8 @@
              ]
        :cljs [[uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
-              [tick.alpha.api :as t]])))
+              [tick.alpha.api :as t]])
+   [hiccup-icons.fa :as fa]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DB todo crud
@@ -216,18 +217,41 @@
          [{:action/label    "js/alert"
            :action/on-click #(js/alert item)}
           {:action/label    "open-in-emacs"
-           :action/on-click #(open-in-emacs item)}
+           :action/on-click #(open-in-emacs item)
+           ;; :action/icon     fa/arrow-circle-down-solid
+           }
           {:action/label    "add-to-db"
            :action/on-click #(add-to-db item)}
           {:action/label    "mark-complete"
-           :action/on-click #(mark-complete item)}
+           :action/on-click #(mark-complete item)
+           :action/icon     fa/check-circle}
           {:action/label    "mark-in-progress"
-           :action/on-click #(mark-in-progress item)}
+           :action/on-click #(mark-in-progress item)
+           :action/icon     fa/pencil-alt-solid}
           {:action/label    "mark-not-started"
-           :action/on-click #(mark-not-started item)}
+           :action/on-click #(mark-not-started item)
+           :action/icon     fa/sticky-note}
           {:action/label    "mark-cancelled"
-           :action/on-click #(mark-cancelled item)}]
+           :action/on-click #(mark-cancelled item)
+           :action/icon     fa/ban-solid}]
          (remove nil?)))))
+
+
+#?(:cljs
+   (defn action-icon [{:action/keys [label icon on-click]}]
+     [:div
+      {:class    ["px-2"
+                  "cursor-pointer" "hover:text-city-blue-300"
+                  "rounded" "border" "border-city-blue-700"
+                  "hover:border-city-blue-300"
+                  "flex" "items-center"
+                  "tooltip"
+                  "relative"]
+       :on-click (fn [_] (on-click))}
+      [:div (if icon icon label)]
+      [:div.tooltip.tooltip-text.bottom-10.-left-3
+       {:class ["whitespace-nowrap"]}
+       label]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -254,7 +278,7 @@
                         ]} item
            hovering?       (uix/state false)]
        [:div
-        {:class          ["m-1" "p-4"
+        {:class          ["m-1" "py-2" "px-4"
                           "border" "border-city-blue-600"
                           "bg-yo-blue-700"
                           "text-white"
@@ -266,11 +290,12 @@
         [:div
          {:class ["flex" "justify-between"]}
          [:div
+          {:class ["text-3xl"]}
           (case status
-            :status/done        [:div "done"]
-            :status/not-started [:div "not started"]
-            :status/in-progress [:div "in progress"]
-            :status/cancelled   [:div "cancelled"]
+            :status/done        fa/check-circle
+            :status/not-started fa/sticky-note
+            :status/in-progress fa/pencil-alt-solid
+            :status/cancelled   fa/ban-solid
             [:div "no status"])]
 
          (when-let [actions (->actions item)]
@@ -278,16 +303,7 @@
             {:class ["flex" "flex-row" "flex-wrap"]}
             (for [[i ax] (map-indexed vector actions)]
               ^{:key i}
-              [:div
-               {:class    ["px-2" "mx-2"
-                           "cursor-pointer"
-                           "hover:text-city-blue-300"
-                           "rounded"
-                           "border"
-                           "border-city-blue-700"
-                           "hover:border-city-blue-300"]
-                :on-click (fn [_] ((:action/on-click ax)))}
-               (:action/label ax)])])]
+              [action-icon ax])])]
 
         [:span
          {:class ["text-xl"]}
@@ -335,7 +351,7 @@
               url])])])))
 
 #?(:cljs
-   (defn split-counts [items]
+   (defn split-counts [items {:keys [set-group-by]}]
      (let [bys [{:group-by :todo/file-name
                  :label    "Source File"}
                 {:group-by :todo/status
@@ -351,15 +367,18 @@
             ^{:key i}
             [:div
              {:class [(when-not (zero? i) "px-8")]}
-             [:div.text-xl.font-nes (:label by)]
+             [:div.text-xl.font-nes
+              {:class    ["cursor-pointer"
+                          "hover:text-city-red-600"]
+               :on-click #(set-group-by (:group-by by))}
+              (:label by)]
              [:div
               (for [[k v] (->> split (sort-by second))]
                 ^{:key k}
                 [:div
                  {:class    ["flex" "font-mono"
                              "cursor-pointer"
-                             "hover:text-city-red-600"
-                             ]
+                             "hover:text-city-red-600"]
                   :on-click #(js/alert (str by " - " k " : " v))}
                  [:span.p-1.text-xl v]
                  [:span.p-1.text-xl (str k)]])]]))])))
@@ -369,8 +388,10 @@
      (let [{:keys [items]} (use-todos)
            selected        (uix/state (first items))
 
+           items-by (uix/state :todo/file-name)
+
            item-groups (->> items
-                            (group-by :todo/status)
+                            (group-by @items-by)
                             (map (fn [[status its]]
                                    {:item-group its
                                     :label      status})))]
@@ -382,7 +403,7 @@
 
         [:div
          {:class ["p-4"]}
-         [split-counts items]]
+         [split-counts items {:set-group-by #(reset! items-by %)}]]
 
         ;; TODO move 'selected' to 'current'?
         ;; (when @selected

@@ -17,6 +17,14 @@ Apps:
 - Screenshots file:src/doctor/ui/views/screenshots.cljc
 - Wallpapers file:src/doctor/ui/views/wallpapers.cljc
 - Workspaces file:src/doctor/ui/views/workspaces.cljc
+
+Icon resources:
+
+- https://freesoft.dev/program/121518366
+- Octicons https://primer.style/octicons/
+- MDI https://materialdesignicons.com/
+- FA https://fontawesome.com/v5.15/icons?d=gallery&p=2&q=pencil
+- FA4 https://fontawesome.com/v4.7/icons/
 * Doctor
 
 An event driven db and plasma dashboard for the health and status of your work.
