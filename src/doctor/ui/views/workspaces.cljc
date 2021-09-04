@@ -2,17 +2,13 @@
   (:require
    [plasma.core :refer [defhandler defstream]]
    #?@(:clj [
-             [tick.alpha.api :as t]
              [systemic.core :refer [defsys] :as sys]
              [manifold.stream :as s]
-             [clawe.defs.workspaces :as defs.workspaces]
              [clawe.workspaces :as clawe.workspaces]
              ]
        :cljs [
               [wing.core :as w]
-              [doctor.ui.connected :as connected]
-              [plasma.uix :refer [with-rpc with-stream]]
-              [tick.alpha.api :as t]])))
+              [plasma.uix :refer [with-rpc with-stream]]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; API
@@ -51,8 +47,8 @@
                                     (w/distinct-by :workspace/title)
                                     (sort-by :awesome/index)))))]
 
-       (with-rpc [@connected/connected?] (get-workspaces) handle-resp)
-       (with-stream [@connected/connected?] (workspaces-stream) handle-resp)
+       (with-rpc [] (get-workspaces) handle-resp)
+       (with-stream [] (workspaces-stream) handle-resp)
 
        {:items @workspaces})))
 

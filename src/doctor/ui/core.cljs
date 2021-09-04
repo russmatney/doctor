@@ -15,7 +15,8 @@
    [doctor.ui.views.dock :as views.dock]
    [doctor.ui.views.topbar :as views.topbar]
    [doctor.ui.views.screenshots :as views.screenshots]
-   [doctor.ui.views.wallpapers :as views.wallpapers]))
+   [doctor.ui.views.wallpapers :as views.wallpapers]
+   [doctor.ui.views.workspaces :as views.workspaces]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; routes, home
@@ -30,6 +31,7 @@
    ["/topbar-bg" {:name :page/topbar-bg}]
    ["/counter" {:name :page/counter}]
    ["/screenshots" {:name :page/screenshots}]
+   ["/workspaces" {:name :page/workspaces}]
    ["/wallpapers" {:name :page/wallpapers}]])
 
 (defn default-main []
@@ -65,6 +67,7 @@
                                 [:page/topbar-bg "Top Bar BG"]
                                 [:page/counter "Counter"]
                                 [:page/wallpapers "Wallpapers"]
+                                [:page/workspaces "Workspaces"]
                                 [:page/screenshots "Screenshots"]]]
          ^{:key page-name}
          [:a {:class (when (#{current-page-name} page-name)
@@ -87,7 +90,6 @@
 (defn view
   []
   (let [page-name (-> router/*match* uix/context :data :name)]
-    (println "page-name" page-name)
     (case page-name
       :page/home        [home nil]
       :page/todos       [home views.todos/widget]
@@ -98,6 +100,7 @@
       :page/counter     [home counter]
       :page/screenshots [home views.screenshots/widget]
       :page/wallpapers  [home views.wallpapers/widget]
+      :page/workspaces  [home views.workspaces/widget]
       [home nil])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
