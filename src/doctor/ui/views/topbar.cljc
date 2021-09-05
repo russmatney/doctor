@@ -520,7 +520,8 @@
            {:keys [items]}   (use-workspaces)
            active-clients    (->> items
                                   (filter :awesome.tag/selected)
-                                  (mapcat :awesome.tag/clients))
+                                  (mapcat :awesome.tag/clients)
+                                  (remove is-bar-app?))
            active-workspaces (->> items (filter :awesome.tag/selected))
 
            hovered-client         (uix/state nil)
@@ -573,9 +574,10 @@
          ;; left side (workspaces)
          [workspace-list opts (->> items (remove :workspace/scratchpad))]
          [workspace-list opts (->> items (filter :workspace/scratchpad))]
-         [client-list opts active-clients]
+         (when (seq active-clients)
+           [client-list opts active-clients])
 
-         ;; clock/host
+         ;; clock/host/metadata
          [:div
           {:class ["flex" "flex-row" "justify-center" "items-center"]}
           [:div
