@@ -337,8 +337,10 @@
 
 #?(:cljs
    (defn is-bar-app? [client]
-     (-> client :awesome.client/name #{"clover/doctor-dock"
-                                       "clover/doctor-topbar"})))
+     (and
+       (-> client :awesome.client/name #{"clover/doctor-dock"
+                                         "clover/doctor-topbar"})
+       (-> client :awesome.client/focused not))))
 
 #?(:cljs
    (defn client-icons
@@ -763,6 +765,6 @@
               "Current Task: "
               [:span name]]))]
 
-        ;; right side
+        ;; below bar
         [detail-window
          (assoc opts :active-workspaces active-workspaces) metadata]])))
