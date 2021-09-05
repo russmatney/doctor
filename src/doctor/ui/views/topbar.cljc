@@ -23,7 +23,8 @@
               [hiccup-icons.mdi :as mdi]
               [tick.alpha.api :as t]
               [tick.format :as t.format]
-              ])))
+              [doctor.ui.components.icons :as icons]
+              [doctor.ui.components.charts :as charts]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Active workspaces
@@ -234,89 +235,6 @@
          (remove nil?)))))
 
 #?(:cljs
-   (defn client->icon [client workspace]
-     ;; TODO namespace client keys
-     ;; TODO get filepaths for class == emacs clients
-     ;; i.e. emacs clients could have types for clojure project, react/python project, org file, etc
-     (let [{:awesome.client/keys [class name]} client
-           {:workspace/keys [title]}           workspace]
-       (cond
-         (= "Emacs" class)
-         (cond
-           (= "journal" title)
-           {:color "text-city-blue-400"
-            :src   "/assets/candy-icons/todo.svg"}
-
-           (= "garden" title)
-           {:color "text-city-blue-400"
-            :src   "/assets/candy-icons/cherrytree.svg"}
-
-           :else
-           {:color "text-city-blue-400"
-            :src   "/assets/candy-icons/emacs.svg"})
-
-         (= "Alacritty" class)
-         {:color "text-city-green-600"
-          :src   "/assets/candy-icons/Alacritty.svg"}
-
-         (= "Spotify" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/spotify.svg"}
-
-         (= "firefox" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/firefox.svg"}
-
-         (= "firefoxdeveloperedition" class)
-         {:color "text-city-green-600"
-          :src   "/assets/candy-icons/firefox-nightly.svg"}
-
-         (= "Google-chrome" class)
-         {:color "text-city-green-600"
-          :src   "/assets/candy-icons/google-chrome.svg"}
-
-         (string/includes? name "Slack call")
-         {:color "text-city-green-600"
-          :src   "/assets/candy-icons/shutter.svg"}
-
-         (= "Slack" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/slack.svg"}
-
-         (= "Rofi" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/kmenuedit.svg"}
-
-         (= "1Password" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/1password.svg"}
-
-         (= "zoom" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/Zoom.svg"}
-
-         (#{"clover/doctor-dock" "clover/doctor-topbar"} name)
-         {:color "text-city-blue-600"
-          :icon  mdi/doctor}
-
-         (string/includes? name "Developer Tools")
-         {:color "text-city-blue-600"
-          :src   "/assets/candy-icons/firefox-developer-edition.svg"}
-
-         (= "Godot" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/godot.svg"}
-
-         (= "Aseprite" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/winds.svg"}
-
-         :else
-         (do
-           (println "missing icon for client" client)
-           {:icon octicons/question16})))))
-
-#?(:cljs
    (defn bar-icon
      [{:keys [color icon src
               on-mouse-over
@@ -353,7 +271,7 @@
         (for [c (->> clients (remove is-bar-app?))]
           (let [c-name                                         (->> c :awesome.client/name (take 15) (apply str))
                 {:awesome.client/keys [window urgent focused]} c
-                {:keys [color] :as icon-def}                   (client->icon c workspace)]
+                {:keys [color] :as icon-def}                   (icons/client->icon c workspace)]
             ^{:key (or window c-name)}
             [bar-icon (-> icon-def
                           (assoc
@@ -513,66 +431,6 @@
                    (:action/label ax))])])])])))
 
 #?(:cljs
-   (defn- show-chart-fn [canvas-id chart-data]
-     (fn []
-       (let [ctx (.. js/document
-                     (getElementById canvas-id)
-                     (getContext "2d"))]
-
-         (js/Chart. ctx (clj->js chart-data))))))
-
-#?(:cljs
-   (defn chart-component [chart-data]
-     (let [canvas-id  (str (gensym))
-           show-chart (show-chart-fn canvas-id chart-data)
-           chart      (uix/state nil)]
-       (uix/with-effect []
-         (let [c (show-chart)]
-           (reset! chart c)))
-
-       (uix/with-effect [chart-data]
-         (when-let [data (some-> chart-data :data :datasets first :data)]
-           (when-let [^js/Chart c @chart]
-             (aset c "data" "datasets" 0 "data"  (clj->js data))
-             (.update c))))
-
-       [:canvas {:id canvas-id}])))
-
-#?(:cljs
-   (defn parse-int [str]
-     (-> str
-         (string/replace "%" "")
-         js/parseInt)))
-
-#?(:cljs
-   (comment
-     (parse-int "81%")
-     ))
-
-#?(:cljs
-   (defn pie-chart
-     "Assumes value is a percentage string like '81%'."
-     [{:keys [label value color]}]
-     (let [value     (parse-int value)
-           remaining (- 100 value)]
-       [:div
-        {:class ["p-1"]}
-        [chart-component
-         {:type    :doughnut
-          :data    {:labels [label]
-                    :datasets
-                    [{:label           label
-                      :data            [value remaining]
-                      :backgroundColor [color "rgba(0, 0, 0, 0)"]
-                      :borderWidth     1
-                      :rotation        270
-                      :circumference   180}]}
-          :options {:cutout    "40%"
-                    :plugins   {:legend {:display false}}
-                    :animation {:animateScale  true
-                                :animateRotate true}}}]])))
-
-#?(:cljs
    (defn workspace-list [opts wspcs]
      [:div
       {:class ["flex" "flex-row"
@@ -692,14 +550,14 @@
        ;; (js/setTimeout
        ;;   #(reset! time (t/zoned-date-time))
        ;;   100000)
+
        [:div
         {:class ["min-h-screen"
                  "max-h-screen"
                  "overflow-hidden"
                  "text-city-pink-200"]}
         [:div
-         {:class ["flex" "flex-row"
-                  "justify-between"]}
+         {:class ["flex" "flex-row" "justify-between"]}
          ;; above/below toggle bar
          [:div
           {:class         ["absolute" "top-0" "left-0" "right-0" "bg-black"
@@ -720,12 +578,12 @@
          ;; clock/host
          [:div
           {:class ["flex" "flex-row" "justify-center" "items-center"]}
-          ;; TODO seems a bit overactive...
           [:div
            (some->> @time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
 
           "|"
           [:div
+           {:class ["font-nes"]}
            (:hostname metadata)]
 
           "|"
@@ -743,11 +601,13 @@
                ^{:key k}
                [:div
                 {:class ["w-10"]}
-                [pie-chart {:label (str k) :value v
-                            :color (case k
-                                     :spotify/volume "rgb(255, 205, 86)"
-                                     :audio/volume   "rgb(54, 162, 235)",
-                                     "rgb(255, 99, 132)")}]]))]
+                [charts/pie-chart
+                 {:label (str k)
+                  :value v
+                  :color (case k
+                           :spotify/volume "rgb(255, 205, 86)"
+                           :audio/volume   "rgb(54, 162, 235)",
+                           "rgb(255, 99, 132)")}]]))]
 
           "|"
           ;; current todos

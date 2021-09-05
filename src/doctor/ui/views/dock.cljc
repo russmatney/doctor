@@ -13,10 +13,7 @@
               [clojure.string :as string]
               [uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
-              [hiccup-icons.octicons :as octicons]
-              [hiccup-icons.fa :as fa]
-              [hiccup-icons.fa4 :as fa4]
-              [hiccup-icons.mdi :as mdi]])))
+              [doctor.ui.components.icons :as icons]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Active workspaces
@@ -108,7 +105,6 @@
 (defhandler hide-workspace [item]
   (println "hide wsp" (:name item))
   (->
-    ;; TODO support non scratchpad workspaces
     item
     ;; :name
     ;; clawe.workspaces/for-name
@@ -209,91 +205,6 @@
          (remove nil?)))))
 
 #?(:cljs
-   (defn client->icon [client workspace]
-     ;; TODO namespace client keys
-     ;; TODO get filepaths for class == emacs clients
-     ;; i.e. emacs clients could have types for clojure project, react/python project, org file, etc
-     (let [{:awesome.client/keys [class name]} client
-           {:workspace/keys [title]}           workspace]
-       (cond
-         (= "Emacs" class)
-         (cond
-           (= "journal" title)
-           {:color "text-city-blue-400"
-            :src   "/assets/candy-icons/todo.svg"}
-
-           (= "garden" title)
-           {:color "text-city-blue-400"
-            :src   "/assets/candy-icons/cherrytree.svg"}
-
-           :else
-           {:color "text-city-blue-400"
-            :src   "/assets/candy-icons/emacs.svg"})
-
-         (= "Alacritty" class)
-         {:color "text-city-green-600"
-          :icon  [:img {:src "/assets/candy-icons/Alacritty.svg"}]
-          ;; :icon  octicons/terminal16
-          }
-
-         (= "Spotify" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/spotify.svg"}
-
-         (= "firefox" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/firefox.svg"}
-
-         (= "firefoxdeveloperedition" class)
-         {:color "text-city-green-600"
-          :src   "/assets/candy-icons/firefox-nightly.svg"}
-
-         (= "Google-chrome" class)
-         {:color "text-city-green-600"
-          :src   "/assets/candy-icons/google-chrome.svg"}
-
-         (string/includes? name "Slack call")
-         {:color "text-city-green-600"
-          :src   "/assets/candy-icons/shutter.svg"}
-
-         (= "Slack" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/slack.svg"}
-
-         (= "Rofi" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/kmenuedit.svg"}
-
-         (= "1Password" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/1password.svg"}
-
-         (= "zoom" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/Zoom.svg"}
-
-         (#{"clover/doctor-dock" "clover/doctor-topbar"} name)
-         {:color "text-city-blue-600"
-          :icon  mdi/doctor}
-
-         (string/includes? name "Developer Tools")
-         {:color "text-city-blue-600"
-          :src   "/assets/candy-icons/firefox-developer-edition.svg"}
-
-         (= "Godot" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/godot.svg"}
-
-         (= "Aseprite" class)
-         {:color "text-city-green-400"
-          :src   "/assets/candy-icons/winds.svg"}
-
-         :else
-         (do
-           (println "missing icon for client" client)
-           {:icon octicons/question16})))))
-
-#?(:cljs
    (defn client-icons
      ([clients] (client-icons {} clients))
      ([{:client/keys [client-hovered client-unhovered]
@@ -307,7 +218,7 @@
                       )]
            (let [c-name                                  (->> c :awesome.client/name (take 15) (apply str))
                  {:awesome.client/keys [urgent focused]} c
-                 {:keys [color icon src]}                (client->icon c workspace)]
+                 {:keys [color icon src]}                (icons/client->icon c workspace)]
              ^{:key (:window c)}
              [:div
               {
@@ -421,13 +332,6 @@
                (:action/label ax)])])]))))
 
 #?(:cljs
-   (defn pie-chart
-     "TODO write this pie chart component"
-     [{:keys [label value]}]
-     [:div
-      (str label " " value)]))
-
-#?(:cljs
    (defn widget []
      (let [hovered-client         (uix/state nil)
            hovered-workspace      (uix/state nil)
@@ -453,21 +357,17 @@
 
          [:div
           (when @last-hovered-workspace
-            (let [{:keys [workspace/directory
-                          git/repo
-                          git/needs-push?
+            (let [{:keys [git/needs-push?
                           git/dirty?
                           git/needs-pull?
-                          ]} @last-hovered-workspace
-                  dir-path   (string/replace (or repo directory "") "/home/russ" "~")]
+                          ]} @last-hovered-workspace]
               (str
                 (when needs-push?
                   (str "#needs-push?"))
                 (when needs-pull?
                   (str "#needs-pull?"))
                 (when dirty?
-                  (str "#dirty?")))
-              ))]
+                  (str "#dirty?")))))]
 
          [:div
           (when @last-hovered-client
@@ -511,17 +411,14 @@
            (when metadata
              (->>
                metadata
-               (remove (fn [[k v]] (when (and v (string? v)) (string/includes? v "%"))))
+               (remove (fn [[_ v]] (when (and v (string? v)) (string/includes? v "%"))))
                (map (fn [[k v]] (str "[" k " " v "] ")))
                (apply str)))]
           [:div
            (when-let [pcts
                       (->>
                         metadata
-                        (filter (fn [[k v]] (when (and v (string? v)) (string/includes? v "%")))))]
+                        (filter (fn [[_k v]] (when (and v (string? v)) (string/includes? v "%")))))]
              (for [[k v] pcts]
                ^{:key k}
-               [pie-chart {:label k :value v}]
-               )
-             )
-           ]]]])))
+               (str k " - " v)))]]]])))
