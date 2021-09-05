@@ -3,7 +3,6 @@ module.exports = {
     require('tailwindcss'),
     require('autoprefixer'),
 
-    // TODO test this purge tool
     process.env.NODE_ENV === 'production' &&
     require('@fullhuman/postcss-purgecss')({
       content: [

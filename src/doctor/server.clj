@@ -4,16 +4,17 @@
    [systemic.core :as sys :refer [defsys]]
    [plasma.server :as plasma.server]
    [plasma.server.interceptors :as plasma.interceptors]
+   [cognitect.transit :as transit]
+   [ring.adapter.undertow :as undertow]
+   [ring.adapter.undertow.websocket :as undertow.ws]
+
    [doctor.config :as config]
    [doctor.time-literals-transit :as tlt]
    [doctor.ui.views.todos :as todos]
    [doctor.ui.views.dock :as dock]
    [doctor.ui.views.topbar :as topbar]
    [doctor.ui.views.screenshots :as screenshots]
-   [doctor.ui.views.wallpapers :as wallpapers]
-   [cognitect.transit :as transit]
-   [ring.adapter.undertow :as undertow]
-   [ring.adapter.undertow.websocket :as undertow.ws]))
+   [doctor.ui.views.wallpapers :as wallpapers]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Plasma config
@@ -79,6 +80,11 @@
           (do
             (screenshots/update-screenshots)
             {:status 200 :body "updated screenshots"})
+
+          (= uri "/todos/update")
+          (do
+            (todos/update-todos)
+            {:status 200 :body "updated todos"})
 
           (= uri "/ws")
           {:undertow/websocket

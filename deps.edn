@@ -31,11 +31,6 @@
   ;; required (along with joda npm deps) for tick to work in cljs
   thheller/shadow-cljsjs    {:mvn/version "0.0.21"}
 
-  ;; database
-  ;; TODO replace with datalevin, or just use clawe's db
-  io.replikativ/datahike   {:mvn/version "0.3.3"}
-  com.stuartsierra/log.dev {:mvn/version "0.2.0"}
-
   ;; app state mgmt
   aero/aero       {:mvn/version "1.1.6"}
   teknql/systemic {:mvn/version "0.2.0"}
@@ -48,7 +43,6 @@
   thheller/shadow-cljs {:mvn/version "2.11.26"}
 
   ;; ui core
-  ;; TODO can these be updated?
   uix/uix.core {:git/url   "https://github.com/rschmukler/uix.git"
                 :deps/root "core"
                 :sha       "5f9953e4482b1bc8e198026a2fd9f6e7ffa0e23e"}

@@ -1,6 +1,4 @@
-{:prod                   #env "PROD"
- :server/port            #or [#env SERVER_PORT 3334]
- :nrepl/port             #or [#env NREPL_PORT 3336]
- :db-file                "/home/russ/russmatney/doctor/db/doctor-db-file"
- :db-temp-migration-file "/home/russ/russmatney/doctor/db/doctor-db-migration-file"
- :home-dir               "/home/russ"}
+{:prod        #env "PROD"
+ :server/port #or [#env SERVER_PORT 3334]
+ :nrepl/port  #or [#env NREPL_PORT 3336]
+ :home-dir    "/home/russ"}
