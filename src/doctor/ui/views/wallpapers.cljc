@@ -21,7 +21,6 @@
          all
          (sort-by :background/last-time-set)
          reverse
-         (take 50)
          (into [])))))
 
 (defhandler get-wallpapers []
