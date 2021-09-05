@@ -399,11 +399,10 @@
              :style (when (and (not selected) (not urgent) color) {:color color})}
 
             [:div
-             {:class ["font-nes" "text-xs"]}
+             {:class ["font-nes" "text-lg"]}
              (let [show (and show-name
                              (or hovering?
-                                 (#{0} (count clients))
-                                 (not scratchpad)))]
+                                 (#{0} (count clients))))]
                [:span
                 {:class [(when show "pr-2")]}
                 (when show
@@ -439,6 +438,49 @@
       (for [[i it] (->> wspcs (map-indexed vector))]
         ^{:key i}
         [workspace-comp opts it])]))
+
+#?(:cljs
+   (defn clock-host-metadata [time metadata]
+     [:div
+      {:class ["flex" "flex-row" "justify-center" "items-center"]}
+      [:div
+       (some->> time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
+
+      "|"
+      [:div
+       {:class ["font-nes"]}
+       (:hostname metadata)]
+
+      "|"
+      [:div
+       (if (:microphone/muted metadata) fa/microphone-slash-solid fa/microphone-solid)]
+
+      "|"
+      [:div
+       {:class ["flex" "flex-row"]}
+       (when-let [pcts
+                  (->>
+                    metadata
+                    (filter (fn [[_ v]] (when (and v (string? v)) (string/includes? v "%")))))]
+         (for [[k v] pcts]
+           ^{:key k}
+           [:div
+            {:class ["w-10"]}
+            [charts/pie-chart
+             {:label (str k)
+              :value v
+              :color (case k
+                       :spotify/volume "rgb(255, 205, 86)"
+                       :audio/volume   "rgb(54, 162, 235)",
+                       "rgb(255, 99, 132)")}]]))]
+
+      "|"
+      ;; current todos
+      (let [ct (-> metadata :todos/in-progress count)]
+        [:div
+         (if (zero? ct)
+           "No in-progress todos"
+           (str ct " in-progress todo(s)"))])]))
 
 #?(:cljs
    (defn detail-window [{:keys [active-workspaces hovered-workspace]} metadata]
@@ -553,10 +595,7 @@
        ;;   100000)
 
        [:div
-        {:class ["min-h-screen"
-                 "max-h-screen"
-                 "overflow-hidden"
-                 "text-city-pink-200"]}
+        {:class ["min-h-screen" "max-h-screen" "overflow-hidden" "text-city-pink-200"]}
         [:div
          {:class ["flex" "flex-row" "justify-between"]}
          ;; above/below toggle bar
@@ -578,46 +617,7 @@
            [client-list opts active-clients])
 
          ;; clock/host/metadata
-         [:div
-          {:class ["flex" "flex-row" "justify-center" "items-center"]}
-          [:div
-           (some->> @time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
-
-          "|"
-          [:div
-           {:class ["font-nes"]}
-           (:hostname metadata)]
-
-          "|"
-          [:div
-           (if (:microphone/muted metadata) fa/microphone-slash-solid fa/microphone-solid)]
-
-          "|"
-          [:div
-           {:class ["flex" "flex-row"]}
-           (when-let [pcts
-                      (->>
-                        metadata
-                        (filter (fn [[_ v]] (when (and v (string? v)) (string/includes? v "%")))))]
-             (for [[k v] pcts]
-               ^{:key k}
-               [:div
-                {:class ["w-10"]}
-                [charts/pie-chart
-                 {:label (str k)
-                  :value v
-                  :color (case k
-                           :spotify/volume "rgb(255, 205, 86)"
-                           :audio/volume   "rgb(54, 162, 235)",
-                           "rgb(255, 99, 132)")}]]))]
-
-          "|"
-          ;; current todos
-          (let [ct (-> metadata :todos/in-progress count)]
-            [:div
-             (if (zero? ct)
-               "No in-progress todos"
-               (str ct " in-progress todo(s)"))])]
+         [clock-host-metadata @time metadata]
 
          ;; TODO call update-topbar-metadata when todos get updated?
          ;; for now it gets called by various things already
