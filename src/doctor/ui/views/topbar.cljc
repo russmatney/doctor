@@ -10,15 +10,14 @@
               [clojure.string :as string]
               [uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
-              [hiccup-icons.octicons :as octicons]
               [hiccup-icons.fa :as fa]
-              [hiccup-icons.fa4 :as fa4]
               [hiccup-icons.mdi :as mdi]
               [tick.alpha.api :as t]
               [tick.format :as t.format]
               [doctor.ui.components.icons :as icons]
               [doctor.ui.components.charts :as charts]
-              [doctor.ui.components.debug :as debug]])))
+              [doctor.ui.views.topbar.popover :as popover]])))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Workspaces
@@ -27,12 +26,11 @@
 (defhandler get-workspaces [] (d.workspaces/active-workspaces))
 (defstream workspaces-stream [] d.workspaces/*workspaces-stream*)
 
-#?(:cljs
-   (defn is-bar-app? [client]
-     (and
-       (-> client :awesome.client/name #{"clover/doctor-dock"
-                                         "clover/doctor-topbar"})
-       (-> client :awesome.client/focused not))))
+(defn is-bar-app? [client]
+  (and
+    (-> client :awesome.client/name #{"clover/doctor-dock"
+                                      "clover/doctor-topbar"})
+    (-> client :awesome.client/focused not)))
 
 #?(:cljs
    (defn use-workspaces []
@@ -273,14 +271,14 @@
 ;; Clock/host/metadata
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#?(:cljs (defn sep [] [:span.px-2 "|"]))
+#?(:cljs (defn sep [] [:span.px-2.font-mono "|"]))
 
 #?(:cljs
    (defn clock-host-metadata [{:keys [time topbar-above toggle-above-below]} metadata]
      [:div
       {:class ["flex" "flex-row" "justify-center" "items-center"]}
 
-      [:div
+      [:div.font-mono
        (some->> time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
 
       [sep]
@@ -314,106 +312,27 @@
       [sep]
       ;; current todos
       (let [ct (-> metadata :todos/in-progress count)]
-        [:div
+        [:div.font-mono
          (if (zero? ct)
            "No in-progress todos"
-           (str ct " in-progress todo(s)"))])
+           (str ct " in-progress todo" (when (> ct 1) "s")))])
       [sep]
-      [:div
+      [:div.font-mono
        {:on-click toggle-above-below}
        (if topbar-above "above" "below")]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Detail window
+;; Current task
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
-   (defn client-metadata
-     ([client] [client-metadata nil client])
-     ([opts client]
-      (let [{:keys [awesome.client/name
-                    awesome.client/class
-                    awesome.client/instance]} client]
-        [:div
-         {:class ["flex" "flex-col" "mb-6"]}
-
-         [:div.mb-4
-          {:class ["flex" "flex-row"]}
-          [icons/icon-comp
-           (assoc (icons/client->icon client nil)
-                  :class ["w-8" "mr-4"])]
-
-          [:span.text-xl
-           (str name " | " class " | " instance)]]
-
-         [debug/raw-metadata
-          (merge {:label "Raw Client Metadata"} opts)
-          (->>
-            client
-            (remove (comp #{:awesome.client/name
-                            :awesome.client/class
-                            :awesome.client/instance} first))
-            (sort-by first))]]))))
-
-#?(:cljs
-   (defn detail-window [{:keys [active-workspaces hovered-workspace
-                                hovered-client
-                                push-below]} metadata]
-     [:div
-      {:class          ["m-6" "ml-auto" "p-6"
-                        "bg-yo-blue-500"
-                        "bg-opacity-80"
-                        "border-city-blue-400"
-                        "rounded"
-                        "w-2/3"
-                        "text-white"
-                        "overflow-y-auto"
-                        "h-5/6" ;; scroll requires parent to have a height
-                        ]
-       :on-mouse-leave push-below}
-
-      (when (or (seq active-workspaces) hovered-workspace)
-        (for [wsp (if hovered-workspace [hovered-workspace] active-workspaces)]
-          (let [{:keys [workspace/directory
-                        git/repo
-                        git/needs-push?
-                        git/dirty?
-                        git/needs-pull?
-                        workspace/title
-                        awesome.tag/clients]} wsp
-
-                dir     (or directory repo)
-                clients (->> clients (remove is-bar-app?))]
-
-            ^{:key title}
-            [:div
-             {:class ["text-left"]}
-             [:div
-              {:class ["flex flex-row justify-between items-center"]}
-              [:span.text-xl.font-nes title]
-
-              [:span.ml-auto
-               (str
-                 (when needs-push? (str "#needs-push"))
-                 (when needs-pull? (str "#needs-pull"))
-                 (when dirty? (str "#dirty")))]]
-
-             [:div
-              {:class ["mb-4" "font-mono"]}
-              dir]
-
-             (when (seq clients)
-               (for [client clients]
-                 ^{:key (:awesome.client/window client)}
-                 [client-metadata client]))])))
-
-      (when hovered-client
-        [:div
-         [:div.text-xl "Hovered Client"]
-         [client-metadata {:initial-show? true} hovered-client]])
-
-      [debug/raw-metadata {:label "Raw Topbar Metadata"}
-       (->> metadata (sort-by first))]]))
+   (defn current-task [metadata]
+     (when (:todos/latest metadata)
+       (let [{:todo/keys [name]} (:todos/latest metadata)]
+         [:div
+          {:class ["flex" "flex-row" "justify-center" "items-center"
+                   "px-4"]}
+          [:div.font-mono name]]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Topbar widget and state
@@ -481,13 +400,9 @@
          ;; clock/host/metadata
          [clock-host-metadata topbar-state metadata]
          ;; current task
-         (when (:todos/latest metadata)
-           (let [{:todo/keys [name]} (:todos/latest metadata)]
-             [:div {:class ["font-mono"]}
-              "Current Task: "
-              [:span name]]))]
+         [current-task metadata]]
 
         ;; below bar
         (when (:topbar-above topbar-state)
-          [detail-window
+          [popover/detail-window
            (assoc topbar-state :active-workspaces active-workspaces) metadata])])))
