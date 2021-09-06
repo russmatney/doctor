@@ -27,11 +27,11 @@
 (defhandler get-workspaces [] (d.workspaces/active-workspaces))
 (defstream workspaces-stream [] d.workspaces/*workspaces-stream*)
 
-(defn is-bar-app? [client]
+(defn skip-bar-app? [client]
   (and
+    (-> client :awesome.client/focused not)
     (-> client :awesome.client/name #{"clover/doctor-dock"
-                                      "clover/doctor-topbar"})
-    (-> client :awesome.client/focused not)))
+                                      "clover/doctor-topbar"})))
 
 #?(:cljs
    (defn use-workspaces []
@@ -50,7 +50,7 @@
         :active-clients    (->> @workspaces
                                 (filter :awesome.tag/selected)
                                 (mapcat :awesome.tag/clients)
-                                (remove is-bar-app?))
+                                (remove skip-bar-app?))
         :active-workspaces (->> @workspaces (filter :awesome.tag/selected))})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -177,7 +177,7 @@
      (when (seq clients)
        [:div
         {:class ["flex" "flex-row" "flex-wrap"]}
-        (for [c (->> clients (remove is-bar-app?))]
+        (for [c (->> clients (remove skip-bar-app?))]
           (let [c-name                                         (->> c :awesome.client/name (take 15) (apply str))
                 {:awesome.client/keys [window urgent focused]} c
                 {:keys [color] :as icon-def}                   (icons/client->icon c workspace)]
