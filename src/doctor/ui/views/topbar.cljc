@@ -122,22 +122,32 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
-   (defn ->active-clients-actions []
-     (let [] (->> [] (remove nil?)))))
-
-#?(:cljs
-   (defn ->actions [item]
-     (let [{:keys [awesome.tag/selected]} item]
-       (->>
-         [(when selected
-            {:action/label    "hide"
-             :action/on-click #(hide-workspace item)
-             :action/icon     {:icon fa/eye-slash}})
-          (when-not selected
-            {:action/label    "show"
-             :action/on-click #(show-workspace item)
-             :action/icon     {:icon fa/eye}})]
-         (remove nil?)))))
+   (defn ->actions
+     ([wsp] (->actions nil wsp))
+     ([{:keys [hovering?]} wsp]
+      (let [{:keys [awesome.tag/selected
+                    git/dirty?
+                    git/needs-push?
+                    git/needs-pull?]} wsp]
+        (->>
+          [(when needs-push? {:action/icon {:icon    mdi/github-face
+                                            :color   "text-city-red-400"
+                                            :tooltip "Needs Push"}})
+           (when needs-pull? {:action/icon {:icon    mdi/github-face
+                                            :color   "text-city-blue-500"
+                                            :tooltip "Needs Pull"}})
+           (when dirty? {:action/icon {:icon    mdi/github-face
+                                       :color   "text-city-green-500"
+                                       :tooltip "Dirty"}})
+           (when (and selected hovering?)
+             {:action/label    "hide"
+              :action/on-click #(hide-workspace wsp)
+              :action/icon     {:icon fa/eye-slash}})
+           (when (and (not selected) hovering?)
+             {:action/label    "show"
+              :action/on-click #(show-workspace wsp)
+              :action/icon     {:icon fa/eye}})]
+          (remove nil?))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Icons
@@ -194,32 +204,6 @@
                             :border? true))]))])))
 
 #?(:cljs
-   (defn git-icons
-     [{:keys [git/dirty?
-              git/needs-push?
-              git/needs-pull?]}]
-
-     (when (or needs-push? needs-pull? dirty?)
-       [:div
-        {:class ["flex" "flex-wrap" "flex-row"
-                 "text-yo-blue-300"]}
-        (when needs-push?
-          [bar-icon
-           {:icon    mdi/doctor
-            :color   "text-city-red-400"
-            :tooltip "Needs Push"}])
-        (when needs-pull?
-          [bar-icon
-           {:icon    mdi/doctor
-            :color   "text-city-blue-500"
-            :tooltip "Needs Pull"}])
-        (when dirty?
-          [bar-icon
-           {:icon    mdi/doctor
-            :color   "text-city-green-500"
-            :tooltip "Dirty"}])])))
-
-#?(:cljs
    (defn client-list [topbar-state clients]
      (let [hovering? (uix/state false)]
        [:div
@@ -238,21 +222,7 @@
          {:class ["flex" "flex-row" "items-center" "justify-center"]}
 
          ;; icons
-         [client-icons topbar-state clients]
-
-         (when hovering?
-           [:div
-            {:class ["flex" "flex-wrap" "flex-row"
-                     "text-yo-blue-300"]}
-            (for [ax (->active-clients-actions)]
-              ^{:key (:action/label ax)}
-              [:div
-               {:class    ["cursor-pointer"
-                           "hover:text-yo-blue-300"]
-                :on-click (:action/on-click ax)}
-               (if (seq (:action/icon ax))
-                 [bar-icon (:action/icon ax)]
-                 (:action/label ax))])])]])))
+         [client-icons topbar-state clients]]])))
 
 #?(:cljs
    (defn workspace-comp
@@ -313,21 +283,18 @@
 
            ;; icons
            [client-icons (assoc topbar-state :workspace wsp) clients]
-           [git-icons wsp]
 
-           (when hovering?
-             [:div
-              {:class ["flex" "flex-wrap" "flex-row"
-                       "text-yo-blue-300"]}
-              (for [ax (->actions wsp)]
-                ^{:key (:action/label ax)}
-                [:div
-                 {:class    ["cursor-pointer"
-                             "hover:text-yo-blue-300"]
-                  :on-click (:action/on-click ax)}
-                 (if (seq (:action/icon ax))
-                   [bar-icon (:action/icon ax)]
-                   (:action/label ax))])])])])))
+           [:div
+            {:class ["flex" "flex-wrap" "flex-row" "text-yo-blue-300"]}
+            (for [[i ax] (map-indexed vector (->actions {:hovering? hovering?} wsp))]
+              ^{:key i}
+              [:div
+               {:class    ["cursor-pointer"
+                           "hover:text-yo-blue-300"]
+                :on-click (:action/on-click ax)}
+               (if (seq (:action/icon ax))
+                 [bar-icon (:action/icon ax)]
+                 (:action/label ax))])]])])))
 
 #?(:cljs
    (defn workspace-list [topbar-state wspcs]
@@ -492,12 +459,7 @@
            time                   (uix/state (t/zoned-date-time))
            interval               (atom nil)]
        (uix/with-effect [@interval]
-         (reset! interval
-                 (js/setInterval
-                   #(do
-                      (println "running clock")
-                      (reset! time (t/zoned-date-time)))
-                   1000))
+         (reset! interval (js/setInterval #(reset! time (t/zoned-date-time)) 1000))
          (fn [] (js/clearInterval @interval)))
 
        {:hovered-client         @hovered-client
