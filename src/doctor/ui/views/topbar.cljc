@@ -414,18 +414,20 @@
 
 #?(:cljs
    (defn detail-window [{:keys [active-workspaces hovered-workspace
-                                hovered-client]} metadata]
+                                hovered-client
+                                push-below]} metadata]
      [:div
-      {:class ["m-6" "ml-auto" "p-6"
-               "bg-yo-blue-500"
-               "bg-opacity-80"
-               "border-city-blue-400"
-               "rounded"
-               "w-2/3"
-               "text-white"
-               "overflow-y-auto"
-               "h-5/6" ;; scroll requires parent to have a height
-               ]}
+      {:class          ["m-6" "ml-auto" "p-6"
+                        "bg-yo-blue-500"
+                        "bg-opacity-80"
+                        "border-city-blue-400"
+                        "rounded"
+                        "w-2/3"
+                        "text-white"
+                        "overflow-y-auto"
+                        "h-5/6" ;; scroll requires parent to have a height
+                        ]
+       :on-mouse-leave push-below}
 
       (when (or (seq active-workspaces) hovered-workspace)
         (for [wsp (if hovered-workspace [hovered-workspace] active-workspaces)]
@@ -485,6 +487,12 @@
            last-hovered-client    (uix/state nil)
            last-hovered-workspace (uix/state nil)
            topbar-above           (uix/state true)
+           pull-above             (fn []
+                                    (-> (toggle-topbar-above true)
+                                        (.then (fn [v] (reset! topbar-above v)))))
+           push-below             (fn []
+                                    (-> (toggle-topbar-above false)
+                                        (.then (fn [v] (reset! topbar-above v)))))
 
            opts {:hovered-client         @hovered-client
                  :hovered-workspace      @hovered-workspace
@@ -492,14 +500,19 @@
                  :last-hovered-client    @last-hovered-client
                  :on-hover-workspace     (fn [w]
                                            (reset! last-hovered-workspace w)
-                                           (reset! hovered-workspace w))
+                                           (reset! hovered-workspace w)
+                                           (pull-above))
                  :on-unhover-workspace   (fn [_]
                                            (reset! hovered-workspace nil))
                  :on-hover-client        (fn [c]
                                            (reset! last-hovered-client c)
-                                           (reset! hovered-client c))
+                                           (reset! hovered-client c)
+                                           (pull-above))
                  :on-unhover-client      (fn [_]
-                                           (reset! hovered-client nil))}
+                                           (reset! hovered-client nil))
+                 :topbar-above           @topbar-above
+                 :pull-above             pull-above
+                 :push-below             push-below}
 
            time (uix/state (t/zoned-date-time))]
        (println "last-hovered-workspace" last-hovered-workspace)
@@ -512,17 +525,6 @@
         {:class ["h-screen" "overflow-hidden" "text-city-pink-200"]}
         [:div
          {:class ["flex" "flex-row" "justify-between"]}
-         ;; above/below toggle bar
-         [:div
-          {:class         ["absolute" "top-0" "left-0" "right-0" "bg-black"
-                           (if @topbar-above "opacity-10" "opacity-0")]
-           :on-mouse-over (fn [e]
-                            ;; don't fire when at the very top, only on the way there
-                            (when (> e.pageY 7)
-                              (-> (toggle-topbar-above (not @topbar-above))
-                                  (.then (fn [v] (reset! topbar-above v))))))
-           :style         {:z-index 0}}
-          [:span {:class "opacity-0"} "|"]]
 
          ;; left side (workspaces)
          [workspace-list opts (->> items (remove :workspace/scratchpad))]
