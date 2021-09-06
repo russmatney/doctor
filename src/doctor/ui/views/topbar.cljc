@@ -28,6 +28,13 @@
 (defstream workspaces-stream [] d.workspaces/*workspaces-stream*)
 
 #?(:cljs
+   (defn is-bar-app? [client]
+     (and
+       (-> client :awesome.client/name #{"clover/doctor-dock"
+                                         "clover/doctor-topbar"})
+       (-> client :awesome.client/focused not))))
+
+#?(:cljs
    (defn use-workspaces []
      (let [workspaces  (plasma.uix/state [])
            handle-resp (fn [new-wsps]
@@ -40,7 +47,12 @@
        (with-rpc [] (get-workspaces) handle-resp)
        (with-stream [] (workspaces-stream) handle-resp)
 
-       {:items @workspaces})))
+       {:workspaces        @workspaces
+        :active-clients    (->> @workspaces
+                                (filter :awesome.tag/selected)
+                                (mapcat :awesome.tag/clients)
+                                (remove is-bar-app?))
+        :active-workspaces (->> @workspaces (filter :awesome.tag/selected))})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Topbar metadata
@@ -60,22 +72,10 @@
        @topbar-metadata)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Helpers
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#?(:cljs
-   (defn is-bar-app? [client]
-     (and
-       (-> client :awesome.client/name #{"clover/doctor-dock"
-                                         "clover/doctor-topbar"})
-       (-> client :awesome.client/focused not))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Workspace commands
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defhandler hide-workspace [item]
-  (println "hide wsp" (:name item))
   (->
     ;; TODO support non scratchpad workspaces - could be a quick awm-fnl show-only
     item
@@ -86,7 +86,6 @@
   (d.workspaces/update-workspaces))
 
 (defhandler show-workspace [item]
-  (println "show wsp" (:name item))
   (->
     item
     ;; :name
@@ -96,7 +95,6 @@
   (d.workspaces/update-workspaces))
 
 (defhandler toggle-topbar-above [above?]
-  (println "setting topbar above" above?)
   (if above?
     ;; awm-fnl does not yet support passed arguments
     (awm/awm-fnl
@@ -167,7 +165,7 @@
 #?(:cljs
    (defn client-icons
      [{:keys [on-hover-client on-unhover-client workspace]
-       :as   _opts}
+       :as   _topbar-state}
       clients]
      (when (seq clients)
        [:div
@@ -222,7 +220,7 @@
             :tooltip "Dirty"}])])))
 
 #?(:cljs
-   (defn client-list [opts clients]
+   (defn client-list [topbar-state clients]
      (let [hovering? (uix/state false)]
        [:div
         {:class
@@ -240,27 +238,25 @@
          {:class ["flex" "flex-row" "items-center" "justify-center"]}
 
          ;; icons
-         [client-icons opts clients]
+         [client-icons topbar-state clients]
 
          (when hovering?
            [:div
             {:class ["flex" "flex-wrap" "flex-row"
                      "text-yo-blue-300"]}
             (for [ax (->active-clients-actions)]
-              (do
-                (println "ax" ax)
-                ^{:key (:action/label ax)}
-                [:div
-                 {:class    ["cursor-pointer"
-                             "hover:text-yo-blue-300"]
-                  :on-click (:action/on-click ax)}
-                 (if (seq (:action/icon ax))
-                   [bar-icon (:action/icon ax)]
-                   (:action/label ax))]))])]])))
+              ^{:key (:action/label ax)}
+              [:div
+               {:class    ["cursor-pointer"
+                           "hover:text-yo-blue-300"]
+                :on-click (:action/on-click ax)}
+               (if (seq (:action/icon ax))
+                 [bar-icon (:action/icon ax)]
+                 (:action/label ax))])])]])))
 
 #?(:cljs
    (defn workspace-comp
-     [{:as   opts
+     [{:as   topbar-state
        :keys [hovered-workspace
               on-hover-workspace
               on-unhover-workspace]}
@@ -316,7 +312,7 @@
               (when show-name title)]]]
 
            ;; icons
-           [client-icons (assoc opts :workspace wsp) clients]
+           [client-icons (assoc topbar-state :workspace wsp) clients]
            [git-icons wsp]
 
            (when hovering?
@@ -334,17 +330,18 @@
                    (:action/label ax))])])])])))
 
 #?(:cljs
-   (defn workspace-list [opts wspcs]
+   (defn workspace-list [topbar-state wspcs]
      [:div
       {:class ["flex" "flex-row" "justify-center"]}
       (for [[i it] (->> wspcs (map-indexed vector))]
         ^{:key i}
-        [workspace-comp opts it])]))
+        [workspace-comp topbar-state it])]))
 
 #?(:cljs
-   (defn clock-host-metadata [time metadata]
+   (defn clock-host-metadata [{:keys [time topbar-above toggle-above-below]} metadata]
      [:div
       {:class ["flex" "flex-row" "justify-center" "items-center"]}
+
       [:div
        (some->> time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
 
@@ -382,7 +379,11 @@
         [:div
          (if (zero? ct)
            "No in-progress todos"
-           (str ct " in-progress todo(s)"))])]))
+           (str ct " in-progress todo(s)"))])
+      "|"
+      [:div
+       {:on-click toggle-above-below}
+       (if topbar-above "above" "below")]]))
 
 #?(:cljs
    (defn client-metadata
@@ -473,16 +474,8 @@
        (->> metadata (sort-by first))]]))
 
 #?(:cljs
-   (defn widget []
-     (let [metadata          (use-topbar-metadata)
-           {:keys [items]}   (use-workspaces)
-           active-clients    (->> items
-                                  (filter :awesome.tag/selected)
-                                  (mapcat :awesome.tag/clients)
-                                  (remove is-bar-app?))
-           active-workspaces (->> items (filter :awesome.tag/selected))
-
-           hovered-client         (uix/state nil)
+   (defn use-topbar-state []
+     (let [hovered-client         (uix/state nil)
            hovered-workspace      (uix/state nil)
            last-hovered-client    (uix/state nil)
            last-hovered-workspace (uix/state nil)
@@ -493,33 +486,45 @@
            push-below             (fn []
                                     (-> (toggle-topbar-above false)
                                         (.then (fn [v] (reset! topbar-above v)))))
+           toggle-above-below     (fn []
+                                    (-> (toggle-topbar-above (not @topbar-above))
+                                        (.then (fn [v] (reset! topbar-above v)))))
+           time                   (uix/state (t/zoned-date-time))
+           interval               (atom nil)]
+       (uix/with-effect [@interval]
+         (reset! interval
+                 (js/setInterval
+                   #(do
+                      (println "running clock")
+                      (reset! time (t/zoned-date-time)))
+                   1000))
+         (fn [] (js/clearInterval @interval)))
 
-           opts {:hovered-client         @hovered-client
-                 :hovered-workspace      @hovered-workspace
-                 :last-hovered-workspace @last-hovered-workspace
-                 :last-hovered-client    @last-hovered-client
-                 :on-hover-workspace     (fn [w]
-                                           (reset! last-hovered-workspace w)
-                                           (reset! hovered-workspace w)
-                                           (pull-above))
-                 :on-unhover-workspace   (fn [_]
-                                           (reset! hovered-workspace nil))
-                 :on-hover-client        (fn [c]
-                                           (reset! last-hovered-client c)
-                                           (reset! hovered-client c)
-                                           (pull-above))
-                 :on-unhover-client      (fn [_]
-                                           (reset! hovered-client nil))
-                 :topbar-above           @topbar-above
-                 :pull-above             pull-above
-                 :push-below             push-below}
+       {:hovered-client         @hovered-client
+        :hovered-workspace      @hovered-workspace
+        :last-hovered-workspace @last-hovered-workspace
+        :last-hovered-client    @last-hovered-client
+        :on-hover-workspace     (fn [w]
+                                  (reset! last-hovered-workspace w)
+                                  (reset! hovered-workspace w)
+                                  (pull-above))
+        :on-unhover-workspace   (fn [_] (reset! hovered-workspace nil))
+        :on-hover-client        (fn [c]
+                                  (reset! last-hovered-client c)
+                                  (reset! hovered-client c)
+                                  (pull-above))
+        :on-unhover-client      (fn [_] (reset! hovered-client nil))
+        :topbar-above           @topbar-above
+        :pull-above             pull-above
+        :push-below             push-below
+        :toggle-above-below     toggle-above-below
+        :time                   @time})))
 
-           time (uix/state (t/zoned-date-time))]
-       (println "last-hovered-workspace" last-hovered-workspace)
-       ;; TODO kill/reuse to prevent loading up too many timers
-       ;; (js/setTimeout
-       ;;   #(reset! time (t/zoned-date-time))
-       ;;   100000)
+#?(:cljs
+   (defn widget []
+     (let [metadata                                              (use-topbar-metadata)
+           {:keys [workspaces active-clients active-workspaces]} (use-workspaces)
+           topbar-state                                          (use-topbar-state)]
 
        [:div
         {:class ["h-screen" "overflow-hidden" "text-city-pink-200"]}
@@ -527,16 +532,15 @@
          {:class ["flex" "flex-row" "justify-between"]}
 
          ;; left side (workspaces)
-         [workspace-list opts (->> items (remove :workspace/scratchpad))]
-         [workspace-list opts (->> items (filter :workspace/scratchpad))]
+         [workspace-list topbar-state (->> workspaces (remove :workspace/scratchpad))]
+         [workspace-list topbar-state (->> workspaces (filter :workspace/scratchpad))]
          (when (seq active-clients)
-           [client-list opts active-clients])
+           [client-list topbar-state active-clients])
 
          ;; clock/host/metadata
-         [clock-host-metadata @time metadata]
+         [clock-host-metadata topbar-state metadata]
 
-         ;; TODO call update-topbar-metadata when todos get updated?
-         ;; for now it gets called by various things already
+         ;; current task
          (when (:todos/latest metadata)
            (let [{:todo/keys [name]} (:todos/latest metadata)]
              [:div {:class ["font-mono"]}
@@ -544,5 +548,6 @@
               [:span name]]))]
 
         ;; below bar
-        [detail-window
-         (assoc opts :active-workspaces active-workspaces) metadata]])))
+        (when (:topbar-above topbar-state)
+          [detail-window
+           (assoc topbar-state :active-workspaces active-workspaces) metadata])])))
