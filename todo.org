@@ -3,5 +3,3 @@
 
 * garden file
 [[org:garden/workspaces/doctor.org][Doctor Garden File]]
-* [ ] chart.js for volume/battery percentages
-* [ ] icon for muted/not muted

@@ -12,7 +12,6 @@
    [uix.dom.alpha :as uix.dom]
 
    [doctor.ui.views.todos :as views.todos]
-   [doctor.ui.views.dock :as views.dock]
    [doctor.ui.views.topbar :as views.topbar]
    [doctor.ui.views.screenshots :as views.screenshots]
    [doctor.ui.views.wallpapers :as views.wallpapers]
@@ -25,8 +24,6 @@
 (def routes
   [["/" {:name :page/home}]
    ["/todos" {:name :page/todos}]
-   ["/dock" {:name :page/dock}]
-   ["/dock-bg" {:name :page/dock-bg}]
    ["/topbar" {:name :page/topbar}]
    ["/topbar-bg" {:name :page/topbar-bg}]
    ["/counter" {:name :page/counter}]
@@ -61,8 +58,6 @@
                      "font-nes"]}
        (for [[page-name label] [[:page/home "Home"]
                                 [:page/todos "Todos"]
-                                [:page/dock "Dock"]
-                                [:page/dock-bg "Dock Bg"]
                                 [:page/topbar "Top Bar"]
                                 [:page/topbar-bg "Top Bar BG"]
                                 [:page/counter "Counter"]
@@ -93,8 +88,6 @@
     (case page-name
       :page/home        [home nil]
       :page/todos       [home views.todos/widget]
-      :page/dock        [views.dock/widget]
-      :page/dock-bg     [home views.dock/widget]
       :page/topbar      [views.topbar/widget]
       :page/topbar-bg   [home views.topbar/widget]
       :page/counter     [home counter]

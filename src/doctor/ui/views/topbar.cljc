@@ -1,18 +1,11 @@
 (ns doctor.ui.views.topbar
   (:require
    [plasma.core :refer [defhandler defstream]]
-   #?@(:clj [[systemic.core :refer [defsys] :as sys]
-             [manifold.stream :as s]
-             [clawe.workspaces :as clawe.workspaces]
+   #?@(:clj [[clawe.workspaces :as clawe.workspaces]
              [clawe.scratchpad :as scratchpad]
              [ralphie.awesome :as awm]
-             [ralphie.battery :as r.battery]
-             [ralphie.pulseaudio :as r.pulseaudio]
-             [ralphie.spotify :as r.spotify]
-             [babashka.process :as process]
-             [clojure.string :as string]
-             [clawe.db.core :as db]
-             ]
+             [doctor.api.topbar :as d.topbar]
+             [doctor.api.workspaces :as d.workspaces]]
        :cljs [[wing.core :as w]
               [clojure.string :as string]
               [uix.core.alpha :as uix]
@@ -24,111 +17,58 @@
               [tick.alpha.api :as t]
               [tick.format :as t.format]
               [doctor.ui.components.icons :as icons]
-              [doctor.ui.components.charts :as charts]])))
+              [doctor.ui.components.charts :as charts]
+              [doctor.ui.components.debug :as debug]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Active workspaces
+;; Workspaces
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#?(:clj
-   (defn active-workspaces []
-     (->>
-       (clawe.workspaces/all-workspaces)
-       (filter :awesome.tag/name)
-       (map clawe.workspaces/apply-git-status)
-       (map #(dissoc % :rules/apply :rules/is-my-client?)))))
+(defhandler get-workspaces [] (d.workspaces/active-workspaces))
+(defstream workspaces-stream [] d.workspaces/*workspaces-stream*)
 
-(defhandler get-workspaces []
-  (active-workspaces))
+#?(:cljs
+   (defn use-workspaces []
+     (let [workspaces  (plasma.uix/state [])
+           handle-resp (fn [new-wsps]
+                         (swap! workspaces
+                                (fn [_wsps]
+                                  (->> new-wsps
+                                       (w/distinct-by :workspace/title)
+                                       (sort-by :awesome.tag/index)))))]
 
-#?(:clj
-   (defsys *workspaces-stream*
-     :start (s/stream)
-     :stop (s/close! *workspaces-stream*)))
+       (with-rpc [] (get-workspaces) handle-resp)
+       (with-stream [] (workspaces-stream) handle-resp)
 
-#?(:clj
-   (comment
-     (sys/start! `*workspaces-stream*)))
-
-(defstream workspaces-stream [] *workspaces-stream*)
-
-#?(:clj
-   (defn update-topbar []
-     (println "pushing to workspaces stream (updating topbar)!")
-     (s/put! *workspaces-stream* (active-workspaces))))
-
-#?(:clj
-   (comment
-     (->>
-       (active-workspaces)
-       (sort-by :awesome.tag/index)
-       first)
-
-     (update-topbar)))
-
+       {:items @workspaces})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Get todos
+;; Topbar metadata
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defhandler get-topbar-metadata [] (d.topbar/build-topbar-metadata))
+(defstream topbar-metadata-stream [] d.topbar/*topbar-metadata-stream*)
 
-#?(:clj
-   (defn in-progress-todos []
-     (some->>
-       (db/query
-         '[:find (pull ?e [*])
-           :where
-           [?e :todo/status :status/in-progress]])
-       first)))
+#?(:cljs
+   (defn use-topbar-metadata []
+     (let [topbar-metadata (plasma.uix/state [])
+           handle-resp     #(reset! topbar-metadata %)]
+
+       (with-rpc [] (get-topbar-metadata) handle-resp)
+       (with-stream [] (topbar-metadata-stream) handle-resp)
+
+       @topbar-metadata)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Misc metadata
+;; Helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-#?(:clj
-   (defn build-topbar-metadata []
-     (let [todos  (in-progress-todos)
-           latest (some->> todos (sort-by :todo/last-started-at) reverse first)]
-       (->
-         {:microphone/muted (r.pulseaudio/input-muted?)
-          :spotify/volume   (r.spotify/spotify-volume-label)
-          :audio/volume     (r.pulseaudio/default-sink-volume-label)
-          :hostname         (-> (process/$ hostname) process/check :out slurp string/trim)}
-         (merge (r.spotify/spotify-current-song)
-                (r.battery/info))
-         (dissoc :spotify/album-url :spotify/album)
-         (assoc :todos/in-progress todos)
-         (assoc :todos/latest latest)))))
-
-(defhandler get-topbar-metadata []
-  (build-topbar-metadata))
-
-#?(:clj
-   (defsys *topbar-metadata-stream*
-     :start (s/stream)
-     :stop (s/close! *topbar-metadata-stream*)))
-
-#?(:clj
-   (comment
-     (sys/start! `*topbar-metadata-stream*)))
-
-(defstream topbar-metadata-stream [] *topbar-metadata-stream*)
-
-#?(:clj
-   (defn update-topbar-metadata []
-     (println "pushing to topbar-metadata stream (updating topbar-metadata)!")
-     (s/put! *topbar-metadata-stream* (build-topbar-metadata))))
-
-#?(:clj
-   (comment
-     (->>
-       (build-topbar-metadata)
-       (sort-by :awesome.tag/index)
-       first)
-
-     (update-topbar-metadata)
-     ))
+#?(:cljs
+   (defn is-bar-app? [client]
+     (and
+       (-> client :awesome.client/name #{"clover/doctor-dock"
+                                         "clover/doctor-topbar"})
+       (-> client :awesome.client/focused not))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Workspace commands
@@ -143,7 +83,7 @@
     ;; clawe.workspaces/for-name
     clawe.workspaces/merge-awm-tags
     scratchpad/toggle-scratchpad)
-  (update-topbar))
+  (d.workspaces/update-workspaces))
 
 (defhandler show-workspace [item]
   (println "show wsp" (:name item))
@@ -153,11 +93,7 @@
     ;; clawe.workspaces/for-name
     clawe.workspaces/merge-awm-tags
     scratchpad/toggle-scratchpad)
-  (update-topbar))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Topbar behavior
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (d.workspaces/update-workspaces))
 
 (defhandler toggle-topbar-above [above?]
   (println "setting topbar above" above?)
@@ -184,36 +120,7 @@
   above?)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Frontend Data contexts
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#?(:cljs
-   (defn use-workspaces []
-     (let [workspaces  (plasma.uix/state [])
-           handle-resp (fn [new-wsps]
-                         (swap! workspaces
-                                (fn [_wsps]
-                                  (->> new-wsps
-                                       (w/distinct-by :workspace/title)
-                                       (sort-by :awesome.tag/index)))))]
-
-       (with-rpc [] (get-workspaces) handle-resp)
-       (with-stream [] (workspaces-stream) handle-resp)
-
-       {:items @workspaces})))
-
-#?(:cljs
-   (defn use-topbar-metadata []
-     (let [topbar-metadata (plasma.uix/state [])
-           handle-resp     #(reset! topbar-metadata %)]
-
-       (with-rpc [] (get-topbar-metadata) handle-resp)
-       (with-stream [] (topbar-metadata-stream) handle-resp)
-
-       @topbar-metadata)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Frontend Components
+;; Actions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
@@ -234,6 +141,10 @@
              :action/icon     {:icon fa/eye}})]
          (remove nil?)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Icons
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 #?(:cljs
    (defn bar-icon
      [{:keys [color icon src
@@ -252,13 +163,6 @@
          src   [:img {:class ["w-10"] :src src}]
          icon  [:div {:class ["text-3xl"]} icon]
          :else fallback-text)]]))
-
-#?(:cljs
-   (defn is-bar-app? [client]
-     (and
-       (-> client :awesome.client/name #{"clover/doctor-dock"
-                                         "clover/doctor-topbar"})
-       (-> client :awesome.client/focused not))))
 
 #?(:cljs
    (defn client-icons
@@ -481,63 +385,43 @@
            (str ct " in-progress todo(s)"))])]))
 
 #?(:cljs
-   (defn raw-metadata
-     ([metadata] [raw-metadata nil metadata])
-     ([{:keys [label]} metadata]
-      (let [label                    (or label "Show raw metadata")
-            show-raw-metadata?       (uix/state false)
-            toggle-show-raw-metadata #(swap! show-raw-metadata? not)]
-        [:div.text-right
-         [:span.text-sm
-          {:class    ["hover:text-city-pink-400" "cursor-pointer"]
-           :on-click toggle-show-raw-metadata}
-          label]
+   (defn client-metadata
+     ([client] [client-metadata nil client])
+     ([opts client]
+      (let [{:keys [awesome.client/name
+                    awesome.client/class
+                    awesome.client/instance]} client]
+        [:div
+         {:class ["flex" "flex-col" "mb-6"]}
 
-         (when @show-raw-metadata?
-           [:div
-            {:class ["mt-auto"]}
-            (when metadata
-              (->>
-                metadata
-                (map (fn [[k v]]
-                       ^{:key k}
-                       [:div.font-mono "[" (str k) " " (str v) "] "]))))])]))))
+         [:div.mb-4
+          {:class ["flex" "flex-row"]}
+          [icons/icon-comp
+           (assoc (icons/client->icon client nil)
+                  :class ["w-8" "mr-4"])]
 
-#?(:cljs
-   (defn client-metadata [client]
-     (let [{:keys [awesome.client/name
-                   awesome.client/class
-                   awesome.client/instance]} client]
-       [:div
-        {:class ["flex" "flex-col" "mb-6"]}
+          [:span.text-xl
+           (str name " | " class " | " instance)]]
 
-        [:div.mb-4
-         {:class ["flex" "flex-row"]}
-         [icons/icon-comp
-          (assoc (icons/client->icon client nil)
-                 :class ["w-8" "mr-4"])]
-
-         [:span.text-xl
-          (str name " | " class " | " instance)]]
-
-
-        [raw-metadata
-         {:label "Raw Client Metadata"}
-         (->>
-           client
-           (remove (comp #{:awesome.client/name
-                           :awesome.client/class
-                           :awesome.client/instance} first))
-           (sort-by first))]])))
+         [debug/raw-metadata
+          (merge {:label "Raw Client Metadata"} opts)
+          (->>
+            client
+            (remove (comp #{:awesome.client/name
+                            :awesome.client/class
+                            :awesome.client/instance} first))
+            (sort-by first))]]))))
 
 #?(:cljs
-   (defn detail-window [{:keys [active-workspaces hovered-workspace]} metadata]
+   (defn detail-window [{:keys [active-workspaces hovered-workspace
+                                hovered-client]} metadata]
      [:div
       {:class ["m-6" "ml-auto" "p-6"
                "bg-yo-blue-500"
+               "bg-opacity-80"
                "border-city-blue-400"
                "rounded"
-               "w-1/2"
+               "w-2/3"
                "text-white"
                "overflow-y-auto"
                "h-5/6" ;; scroll requires parent to have a height
@@ -578,7 +462,12 @@
                  ^{:key (:awesome.client/window client)}
                  [client-metadata client]))])))
 
-      [raw-metadata {:label "Raw Topbar Metadata"}
+      (when hovered-client
+        [:div
+         [:div.text-xl "Hovered Client"]
+         [client-metadata {:initial-show? true} hovered-client]])
+
+      [debug/raw-metadata {:label "Raw Topbar Metadata"}
        (->> metadata (sort-by first))]]))
 
 #?(:cljs

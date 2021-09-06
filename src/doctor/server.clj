@@ -11,8 +11,8 @@
    [doctor.config :as config]
    [doctor.time-literals-transit :as tlt]
    [doctor.ui.views.todos :as todos]
-   [doctor.ui.views.dock :as dock]
-   [doctor.ui.views.topbar :as topbar]
+   [doctor.api.workspaces :as d.workspaces]
+   [doctor.api.topbar :as d.topbar]
    [doctor.ui.views.screenshots :as screenshots]
    [doctor.ui.views.wallpapers :as wallpapers]))
 
@@ -45,10 +45,8 @@
 (defsys *server*
   "Doctor webserver"
   :extra-deps
-  [dock/*workspaces-stream*
-   dock/*dock-metadata-stream*
-   topbar/*workspaces-stream*
-   topbar/*topbar-metadata-stream*
+  [d.workspaces/*workspaces-stream*
+   d.topbar/*topbar-metadata-stream*
    screenshots/*screenshots-stream*
    wallpapers/*wallpapers-stream*
    todos/*todos-stream*]
@@ -62,19 +60,15 @@
         (cond
           (= uri "/topbar/update")
           (do
-            (topbar/update-topbar)
-            (topbar/update-topbar-metadata)
-            ;; (dock/update-dock)
-            ;; (dock/update-dock-metadata)
-            {:status 200 :body "updated dock and topbar"})
+            (d.workspaces/update-workspaces)
+            (d.topbar/update-topbar-metadata)
+            {:status 200 :body "updated topbar"})
 
           (= uri "/dock/update")
           (do
-            (topbar/update-topbar)
-            (topbar/update-topbar-metadata)
-            ;; (dock/update-dock)
-            ;; (dock/update-dock-metadata)
-            {:status 200 :body "updated dock and topbar"})
+            (d.workspaces/update-workspaces)
+            (d.topbar/update-topbar-metadata)
+            {:status 200 :body "updated topbar"})
 
           (= uri "/screenshots/update")
           (do
