@@ -432,9 +432,7 @@
 #?(:cljs
    (defn workspace-list [opts wspcs]
      [:div
-      {:class ["flex" "flex-row"
-               "justify-center"
-               "overflow-hidden"]}
+      {:class ["flex" "flex-row" "justify-center"]}
       (for [[i it] (->> wspcs (map-indexed vector))]
         ^{:key i}
         [workspace-comp opts it])]))
@@ -483,6 +481,56 @@
            (str ct " in-progress todo(s)"))])]))
 
 #?(:cljs
+   (defn raw-metadata
+     ([metadata] [raw-metadata nil metadata])
+     ([{:keys [label]} metadata]
+      (let [label                    (or label "Show raw metadata")
+            show-raw-metadata?       (uix/state false)
+            toggle-show-raw-metadata #(swap! show-raw-metadata? not)]
+        [:div.text-right
+         [:span.text-sm
+          {:class    ["hover:text-city-pink-400" "cursor-pointer"]
+           :on-click toggle-show-raw-metadata}
+          label]
+
+         (when @show-raw-metadata?
+           [:div
+            {:class ["mt-auto"]}
+            (when metadata
+              (->>
+                metadata
+                (map (fn [[k v]]
+                       ^{:key k}
+                       [:div.font-mono "[" (str k) " " (str v) "] "]))))])]))))
+
+#?(:cljs
+   (defn client-metadata [client]
+     (let [{:keys [awesome.client/name
+                   awesome.client/class
+                   awesome.client/instance]} client]
+       [:div
+        {:class ["flex" "flex-col" "mb-6"]}
+
+        [:div.mb-4
+         {:class ["flex" "flex-row"]}
+         [icons/icon-comp
+          (assoc (icons/client->icon client nil)
+                 :class ["w-8" "mr-4"])]
+
+         [:span.text-xl
+          (str name " | " class " | " instance)]]
+
+
+        [raw-metadata
+         {:label "Raw Client Metadata"}
+         (->>
+           client
+           (remove (comp #{:awesome.client/name
+                           :awesome.client/class
+                           :awesome.client/instance} first))
+           (sort-by first))]])))
+
+#?(:cljs
    (defn detail-window [{:keys [active-workspaces hovered-workspace]} metadata]
      [:div
       {:class ["m-6" "ml-auto" "p-6"
@@ -490,7 +538,10 @@
                "border-city-blue-400"
                "rounded"
                "w-1/2"
-               "text-white"]}
+               "text-white"
+               "overflow-y-auto"
+               "h-5/6" ;; scroll requires parent to have a height
+               ]}
 
       (when (or (seq active-workspaces) hovered-workspace)
         (for [wsp (if hovered-workspace [hovered-workspace] active-workspaces)]
@@ -509,8 +560,8 @@
             [:div
              {:class ["text-left"]}
              [:div
-              {:class ["flex flex-row justify-between"]}
-              [:span.text-xl "Workspace: " title]
+              {:class ["flex flex-row justify-between items-center"]}
+              [:span.text-xl.font-nes title]
 
               [:span.ml-auto
                (str
@@ -519,42 +570,16 @@
                  (when dirty? (str "#dirty")))]]
 
              [:div
-              {:class ["mb-4"]}
+              {:class ["mb-4" "font-mono"]}
               dir]
 
              (when (seq clients)
                (for [client clients]
-                 (let [{:keys [awesome.client/name
-                               awesome.client/class
-                               awesome.client/instance
-                               awesome.client/window]} client]
-                   ^{:key window}
-                   [:div
-                    {:class ["text-left" "flex" "flex-col" "mb-6"]}
+                 ^{:key (:awesome.client/window client)}
+                 [client-metadata client]))])))
 
-                    [:span.text-xl (str name " | " class " | " instance)]
-
-                    (->>
-                      client
-                      (remove (comp #{:awesome.client/name
-                                      :awesome.client/class
-                                      :awesome.client/instance} first))
-                      (map (fn [[k v]] (str "[" k " " v "] ")))
-                      (apply str))])))])))
-
-
-      [:div
-       {:class ["mt-auto"]}
-       (when metadata
-         (->>
-           metadata
-           (remove (fn [[k v]]
-                     (or
-                       (#{:spotify/artist :spotify/song :hostname} k)
-                       (when (and v (string? v))
-                         (string/includes? v "%")))))
-           (map (fn [[k v]] (str "[" k " " v "] ")))
-           (apply str)))]]))
+      [raw-metadata {:label "Raw Topbar Metadata"}
+       (->> metadata (sort-by first))]]))
 
 #?(:cljs
    (defn widget []
@@ -595,7 +620,7 @@
        ;;   100000)
 
        [:div
-        {:class ["min-h-screen" "max-h-screen" "overflow-hidden" "text-city-pink-200"]}
+        {:class ["h-screen" "overflow-hidden" "text-city-pink-200"]}
         [:div
          {:class ["flex" "flex-row" "justify-between"]}
          ;; above/below toggle bar

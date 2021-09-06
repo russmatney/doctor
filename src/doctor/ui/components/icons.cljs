@@ -84,3 +84,9 @@
       (do
         (println "missing icon for client" client)
         {:icon octicons/question16}))))
+
+(defn icon-comp [{:keys [class src icon text]}]
+  (cond
+    src   [:img {:class class :src src}]
+    icon  [:div {:class class} icon]
+    :else text))
