@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as string]
    [hiccup-icons.octicons :as octicons]
-   [hiccup-icons.fa :as fa]
-   [hiccup-icons.fa4 :as fa4]
+   ;; [hiccup-icons.fa :as fa]
+   ;; [hiccup-icons.fa4 :as fa4]
    [hiccup-icons.mdi :as mdi]))
 
 (defn client->icon [client workspace]
@@ -90,3 +90,18 @@
     src   [:img {:class class :src src}]
     icon  [:div {:class class} icon]
     :else text))
+
+(defn action-icon [{:action/keys [label icon on-click tooltip]}]
+  [:div
+   {:class    ["px-2"
+               "cursor-pointer" "hover:text-city-blue-300"
+               "rounded" "border" "border-city-blue-700"
+               "hover:border-city-blue-300"
+               "flex" "items-center"
+               "tooltip"
+               "relative"]
+    :on-click (fn [_] (on-click))}
+   [:div (if icon icon label)]
+   [:div.tooltip.tooltip-text.bottom-10.-left-3
+    {:class ["whitespace-nowrap"]}
+    (or tooltip label)]])

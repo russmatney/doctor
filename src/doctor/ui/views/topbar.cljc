@@ -16,6 +16,7 @@
               [tick.format :as t.format]
               [doctor.ui.components.icons :as icons]
               [doctor.ui.components.charts :as charts]
+              [doctor.ui.components.todos :as todos]
               [doctor.ui.views.topbar.popover :as popover]])))
 
 
@@ -327,12 +328,13 @@
 
 #?(:cljs
    (defn current-task [metadata]
-     (when (:todos/latest metadata)
-       (let [{:todo/keys [name]} (:todos/latest metadata)]
+     (when-let [todo (:todos/latest metadata)]
+       (let [{:todo/keys [name]} todo]
          [:div
-          {:class ["flex" "flex-row" "justify-center" "items-center"
-                   "px-4"]}
-          [:div.font-mono name]]))))
+          {:class ["flex" "flex-row" "justify-center" "items-center"]}
+          [:div.font-mono.pr-3 name]
+
+          [todos/action-list todo]]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Topbar widget and state
@@ -389,7 +391,7 @@
        [:div
         {:class ["h-screen" "overflow-hidden" "text-city-pink-200"]}
         [:div
-         {:class ["flex" "flex-row" "justify-between"]}
+         {:class ["flex" "flex-row" "justify-between" "pr-3"]}
 
          ;; repo workspaces
          [workspace-list topbar-state (->> workspaces (remove :workspace/scratchpad))]

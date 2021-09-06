@@ -5,7 +5,8 @@
        :cljs [[uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
               [tick.alpha.api :as t]
-              [hiccup-icons.fa :as fa]])))
+              [hiccup-icons.fa :as fa]
+              [doctor.ui.components.todos :as todos]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Todos data api
@@ -23,101 +24,6 @@
        (with-stream [] (todos-stream) handle-resp)
 
        {:items @items})))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; actions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defhandler open-in-emacs [item]
-  (println "open in emacs!!!")
-  (println "opening file:" item)
-  (println "(TODO)")
-  :ok)
-
-(defhandler add-to-db [item]
-  (println "upserting-to-db" item)
-  (d.todos/upsert-todo-db item)
-  (d.todos/update-todos)
-  :ok)
-
-(defhandler mark-complete [item]
-  (println "marking-complete" item)
-  (-> item
-      (assoc :todo/status :status/done)
-      (assoc :todo/last-completed-at (System/currentTimeMillis))
-      d.todos/upsert-todo-db)
-  (d.todos/update-todos)
-  :ok)
-
-(defhandler mark-in-progress [item]
-  (println "marking-in-progress" item)
-  (-> item
-      (assoc :todo/status :status/in-progress)
-      (assoc :todo/last-started-at (System/currentTimeMillis))
-      d.todos/upsert-todo-db)
-  (d.todos/update-todos)
-  :ok)
-
-(defhandler mark-not-started [item]
-  (println "marking-not-started" item)
-  (-> item
-      (assoc :todo/status :status/not-started)
-      (assoc :todo/last-stopped-at (System/currentTimeMillis))
-      d.todos/upsert-todo-db)
-  (d.todos/update-todos)
-  :ok)
-
-(defhandler mark-cancelled [item]
-  (println "marking-cancelled" item)
-  (-> item
-      (assoc :todo/status :status/cancelled)
-      (assoc :todo/last-cancelled-at (System/currentTimeMillis))
-      d.todos/upsert-todo-db)
-  (d.todos/update-todos)
-  :ok)
-
-#?(:cljs
-   (defn ->actions [item]
-     (let [{:keys []} item]
-       (->>
-         [{:action/label    "js/alert"
-           :action/on-click #(js/alert item)}
-          {:action/label    "open-in-emacs"
-           :action/on-click #(open-in-emacs item)
-           ;; :action/icon     fa/arrow-circle-down-solid
-           }
-          {:action/label    "add-to-db"
-           :action/on-click #(add-to-db item)}
-          {:action/label    "mark-complete"
-           :action/on-click #(mark-complete item)
-           :action/icon     fa/check-circle}
-          {:action/label    "mark-in-progress"
-           :action/on-click #(mark-in-progress item)
-           :action/icon     fa/pencil-alt-solid}
-          {:action/label    "mark-not-started"
-           :action/on-click #(mark-not-started item)
-           :action/icon     fa/sticky-note}
-          {:action/label    "mark-cancelled"
-           :action/on-click #(mark-cancelled item)
-           :action/icon     fa/ban-solid}]
-         (remove nil?)))))
-
-
-#?(:cljs
-   (defn action-icon [{:action/keys [label icon on-click]}]
-     [:div
-      {:class    ["px-2"
-                  "cursor-pointer" "hover:text-city-blue-300"
-                  "rounded" "border" "border-city-blue-700"
-                  "hover:border-city-blue-300"
-                  "flex" "items-center"
-                  "tooltip"
-                  "relative"]
-       :on-click (fn [_] (on-click))}
-      [:div (if icon icon label)]
-      [:div.tooltip.tooltip-text.bottom-10.-left-3
-       {:class ["whitespace-nowrap"]}
-       label]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -153,12 +59,7 @@
             :status/cancelled   fa/ban-solid
             [:div "no status"])]
 
-         (when-let [actions (->actions item)]
-           [:div
-            {:class ["flex" "flex-row" "flex-wrap"]}
-            (for [[i ax] (map-indexed vector actions)]
-              ^{:key i}
-              [action-icon ax])])]
+         [todos/action-list item]]
 
         [:span
          {:class ["text-xl"]}
