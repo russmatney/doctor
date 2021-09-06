@@ -173,10 +173,8 @@
          :else fallback-text)]]))
 
 #?(:cljs
-   (defn client-icons
-     [{:keys [on-hover-client on-unhover-client workspace]
-       :as   _topbar-state}
-      clients]
+   (defn client-icon-list
+     [{:keys [on-hover-client on-unhover-client workspace]} clients]
      (when (seq clients)
        [:div
         {:class ["flex" "flex-row" "flex-wrap"]}
@@ -191,11 +189,7 @@
                             :on-mouse-out  #(on-unhover-client c)
                             :fallback-text c-name
                             :color color
-                            :classes [
-                                      ;; (cond focused "bg-city-orange-400")
-                                      ;; (cond focused "bg-opacity-10")
-                                      (cond #_focused #_ "border-opacity-20"
-                                            :else     "border-opacity-0")
+                            :classes ["border-opacity-0"
                                       (cond
                                         focused "text-city-orange-400"
                                         urgent  "text-city-red-400"
@@ -203,95 +197,66 @@
                                         :else   "text-city-blue-400")]
                             :border? true))]))])))
 
+(def cell-classes
+  ["flex" "flex-row" "justify-center"
+   "max-h-16" "px-2"
+   "border" "border-city-blue-600" "rounded" "border-opacity-50"
+   "bg-yo-blue-800"
+   "bg-opacity-10"
+   "text-white"])
+
 #?(:cljs
-   (defn client-list [topbar-state clients]
+   (defn clients-cell
+     [topbar-state clients]
      (let [hovering? (uix/state false)]
        [:div
-        {:class
-         ["flex" "flex-row" "justify-center"
-          "max-h-16"
-          "px-2"
-          "border" "border-city-blue-600" "rounded"
-          "border-opacity-50"
-          "bg-yo-blue-800"
-          "bg-opacity-10"
-          "text-white"]
+        {:class          cell-classes
          :on-mouse-enter #(reset! hovering? true)
          :on-mouse-leave #(reset! hovering? false)}
-        [:div
-         {:class ["flex" "flex-row" "items-center" "justify-center"]}
-
+        [:div {:class ["flex" "flex-row" "items-center" "justify-center"]}
          ;; icons
-         [client-icons topbar-state clients]]])))
+         [client-icon-list topbar-state clients]]])))
 
 #?(:cljs
-   (defn workspace-comp
+   (defn workspace-cell
      [{:as   topbar-state
-       :keys [hovered-workspace
-              on-hover-workspace
-              on-unhover-workspace]}
-      {:keys [workspace/title
-              workspace/color
-              awesome.tag/index
-              workspace/scratchpad
-              awesome.tag/clients
-              awesome.tag/selected
-              awesome.tag/urgent]
-       :as   wsp}]
+       :keys [hovered-workspace on-hover-workspace on-unhover-workspace]}
+      {:as               wsp
+       :workspace/keys   [title scratchpad]
+       :awesome.tag/keys [index clients selected urgent]}]
      (let [hovering? (= hovered-workspace wsp)]
        [:div
-        {:class
-         ["flex" "flex-row" "justify-center"
-          "max-h-16"
-          "px-2"
-          "border" "border-city-blue-600" "rounded"
-          "border-opacity-50"
-          "bg-yo-blue-800"
-          (cond selected "bg-opacity-60"
-                :else    "bg-opacity-10")
-          "text-white"]
+        {:class          (conj cell-classes (cond selected "bg-opacity-60" :else "bg-opacity-10"))
          :on-mouse-enter #(on-hover-workspace wsp)
          :on-mouse-leave #(on-unhover-workspace wsp)}
         (let [show-name (or hovering? (not scratchpad) urgent selected (#{0} (count clients)))]
-          [:div
-           {:class ["flex" "flex-row" "items-center" "justify-center"]}
-
+          [:div {:class ["flex" "flex-row" "items-center" "justify-center"]}
            ;; name/number
-           [:div
-            {:class [(when show-name "px-2")
-                     (when-not show-name "w-0")
-                     "transition-all"
-
-                     (cond
-                       urgent   "text-city-red-400"
-                       selected "text-city-orange-400"
-                       :else    "text-yo-blue-300")]
-             :style (when (and (not selected) (not urgent) color) {:color color})}
-
-            [:div
-             {:class ["font-nes" "text-lg"]}
-             (let [show (and show-name
-                             (or hovering?
-                                 (#{0} (count clients))))]
-               [:span
-                {:class [(when show "pr-2")]}
+           [:div {:class [(when show-name "px-2")
+                          (when-not show-name "w-0")
+                          "transition-all"
+                          (cond urgent   "text-city-red-400"
+                                selected "text-city-orange-400"
+                                :else    "text-yo-blue-300")]}
+            [:div {:class ["font-nes" "text-lg"]}
+             ;; number/index
+             (let [show (and show-name (or hovering? (#{0} (count clients))))]
+               [:span {:class [(when show "pr-2")]}
                 (when show
                   (str "(" index ")"))])
+             ;; name/title
+             (when show-name title)]]
 
-             [:span
-              (when show-name title)]]]
+           ;; clients
+           [client-icon-list (assoc topbar-state :workspace wsp) clients]
 
-           ;; icons
-           [client-icons (assoc topbar-state :workspace wsp) clients]
-
+           ;; actions
            [:div
             {:class ["flex" "flex-wrap" "flex-row" "text-yo-blue-300"]}
             (for [[i ax] (map-indexed vector (->actions {:hovering? hovering?} wsp))]
               ^{:key i}
-              [:div
-               {:class    ["cursor-pointer"
-                           "hover:text-yo-blue-300"]
-                :on-click (:action/on-click ax)}
+              [:div {:class    ["cursor-pointer" "hover:text-yo-blue-300"]
+                     :on-click (:action/on-click ax)}
                (if (seq (:action/icon ax))
                  [bar-icon (:action/icon ax)]
                  (:action/label ax))])]])])))
@@ -302,7 +267,13 @@
       {:class ["flex" "flex-row" "justify-center"]}
       (for [[i it] (->> wspcs (map-indexed vector))]
         ^{:key i}
-        [workspace-comp topbar-state it])]))
+        [workspace-cell topbar-state it])]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Clock/host/metadata
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#?(:cljs (defn sep [] [:span.px-2 "|"]))
 
 #?(:cljs
    (defn clock-host-metadata [{:keys [time topbar-above toggle-above-below]} metadata]
@@ -312,16 +283,16 @@
       [:div
        (some->> time (t.format/format (t.format/formatter "MM/dd HH:mm")))]
 
-      "|"
+      [sep]
       [:div
        {:class ["font-nes"]}
        (:hostname metadata)]
 
-      "|"
+      [sep]
       [:div
        (if (:microphone/muted metadata) fa/microphone-slash-solid fa/microphone-solid)]
 
-      "|"
+      [sep]
       [:div
        {:class ["flex" "flex-row"]}
        (when-let [pcts
@@ -340,17 +311,21 @@
                        :audio/volume   "rgb(54, 162, 235)",
                        "rgb(255, 99, 132)")}]]))]
 
-      "|"
+      [sep]
       ;; current todos
       (let [ct (-> metadata :todos/in-progress count)]
         [:div
          (if (zero? ct)
            "No in-progress todos"
            (str ct " in-progress todo(s)"))])
-      "|"
+      [sep]
       [:div
        {:on-click toggle-above-below}
        (if topbar-above "above" "below")]]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Detail window
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
    (defn client-metadata
@@ -440,6 +415,10 @@
       [debug/raw-metadata {:label "Raw Topbar Metadata"}
        (->> metadata (sort-by first))]]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Topbar widget and state
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 #?(:cljs
    (defn use-topbar-state []
      (let [hovered-client         (uix/state nil)
@@ -493,15 +472,14 @@
         [:div
          {:class ["flex" "flex-row" "justify-between"]}
 
-         ;; left side (workspaces)
+         ;; repo workspaces
          [workspace-list topbar-state (->> workspaces (remove :workspace/scratchpad))]
+         ;; scratchpads
          [workspace-list topbar-state (->> workspaces (filter :workspace/scratchpad))]
-         (when (seq active-clients)
-           [client-list topbar-state active-clients])
-
+         ;; active-clients
+         (when (seq active-clients) [clients-cell topbar-state active-clients])
          ;; clock/host/metadata
          [clock-host-metadata topbar-state metadata]
-
          ;; current task
          (when (:todos/latest metadata)
            (let [{:todo/keys [name]} (:todos/latest metadata)]
