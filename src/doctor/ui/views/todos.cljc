@@ -129,8 +129,8 @@
                :on-click #(set-group-by (:group-by by))}
               (:label by)]
              [:div
-              (for [[k v] (->> split (sort-by second))]
-                ^{:key k}
+              (for [[i [k v]] (->> split (sort-by second) (map-indexed vector))]
+                ^{:key i}
                 [:div
                  {:class    ["flex" "font-mono"
                              "cursor-pointer"
@@ -140,17 +140,26 @@
                  [:span.p-1.text-xl (str k)]])]]))])))
 
 #?(:cljs
+   (defn todo-list [{:keys [label selected on-select]} todos]
+     [:div {:class ["flex" "flex-col" "flex-wrap" "justify-center"]}
+      [:div {:class ["text-2xl" "p-2" "pt-4"]} label]
+      (for [[i it] (->> todos (map-indexed vector))]
+        ^{:key i}
+        [todo
+         {:on-select    #(on-select it)
+          :is-selected? (= selected it)}
+         (assoc it :index i)])]))
+
+#?(:cljs
    (defn widget []
      (let [{:keys [items]} (use-todos)
            selected        (uix/state (first items))
-
-           items-by (uix/state :todo/file-name)
-
-           item-groups (->> items
-                            (group-by @items-by)
-                            (map (fn [[status its]]
-                                   {:item-group its
-                                    :label      status})))]
+           items-by        (uix/state :todo/file-name)
+           item-groups     (->> items
+                                (group-by @items-by)
+                                (map (fn [[status its]]
+                                       {:item-group its
+                                        :label      status})))]
        [:div
         {:class ["flex" "flex-col" "flex-wrap"
                  "overflow-hidden"
@@ -171,16 +180,16 @@
         ;; TODO group/filter by scheduled-date
         ;; TODO opt-in/out of files
 
-        (for [[i {:keys [item-group label]}] (map-indexed vector item-groups)]
+        [todo-list
+         {:label     "In Progress"
+          :on-select (fn [it] (reset! selected it))
+          :selected  @selected}
+         (->> items (filter (comp #{:status/in-progress} :todo/status)))]
+
+        (for [[i {:keys [item-group label]}]
+              (map-indexed vector item-groups)]
           ^{:key i}
-          [:div
-           {:class ["flex" "flex-col" "flex-wrap" "justify-center"]}
-           [:div
-            {:class ["text-2xl" "p-2" "pt-4"]}
-            (str label " (" (count item-group) ")")]
-           (for [[i it] (->> item-group (map-indexed vector))]
-             ^{:key i}
-             [todo
-              {:on-select    (fn [_] (reset! selected it))
-               :is-selected? (= @selected it)}
-              (assoc it :index i)])])])))
+          [todo-list {:label     (str label " (" (count item-group) ")")
+                      :on-select (fn [it] (reset! selected it))
+                      :selected  @selected}
+           item-group])])))

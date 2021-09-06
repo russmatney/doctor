@@ -7,7 +7,8 @@
    [tick.alpha.api :as t]
    [babashka.fs :as fs]
    [clojure.string :as string]
-   [clawe.db.core :as db]))
+   [clawe.db.core :as db]
+   [wing.core :as w]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DB todo crud
@@ -31,14 +32,20 @@
         merged   (update merged :org/id #(or % (java.util.UUID/randomUUID)))]
     (db/transact [merged])))
 
+(defn list-todos-db []
+  (some->>
+    (db/query
+      '[:find (pull ?e [*])
+        :where [?e :todo/name ?name]])
+    (map first)))
 
 (comment
-  (db/query
-    '[:find (pull ?e [*])
-      :in $ ?name
-      :where
-      [?e :org/name ?name]]
-    (:org/name --i))
+  ;; (db/query
+  ;;   '[:find (pull ?e [*])
+  ;;     :in $ ?name
+  ;;     :where
+  ;;     [?e :org/name ?name]]
+  ;;   (:org/name --i))
 
   (db/query
     '[:find (pull ?e [*])
@@ -68,8 +75,6 @@
            :todo/created-at (parse-created-at created-at)
            :todo/status status)))
 
-(comment --i)
-
 (defn org-file-paths []
   (concat
     (->>
@@ -79,7 +84,7 @@
                    r.zsh/expand
                    (string/split #" "))))))
 
-(defn build-todos []
+(defn build-org-todos []
   (->> (org-file-paths)
        (map fs/file)
        (filter fs/exists?)
@@ -89,7 +94,7 @@
        (map #(merge % (get-todo-db %)))))
 
 (comment
-  (->> (build-todos)
+  (->> (build-org-todos)
        (filter :todo/status)
        (group-by :todo/status)
        (map (fn [[s xs]]
@@ -102,7 +107,7 @@
         [?e :todo/status :status/in-progress]])))
 
 (defn sorted-todos []
-  (->> (build-todos)
+  (->> (build-org-todos)
        (sort-by :db/id)
        reverse
        (sort-by :todo/status)
@@ -113,11 +118,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-todos []
-  (build-todos))
+  (let [org-todos (build-org-todos)
+        db-todos  (list-todos-db)
+        all       (->> (concat org-todos db-todos)
+                       (w/distinct-by :org/name))]
+    all))
 
 (comment
   (->>
-    (build-todos)
+    (get-todos)
     (filter :db/id)
     (count)))
 
