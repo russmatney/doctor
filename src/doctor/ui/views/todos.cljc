@@ -1,162 +1,28 @@
 (ns doctor.ui.views.todos
   (:require
    [plasma.core :refer [defhandler defstream]]
-   #?@(:clj [[systemic.core :refer [defsys] :as sys]
-             [manifold.stream :as s]
-             [org-crud.core :as org-crud]
-             [ralphie.zsh :as r.zsh]
-             [tick.alpha.api :as t]
-             [babashka.fs :as fs]
-             [clojure.string :as string]
-             [clawe.db.core :as db]
-             ]
+   #?@(:clj [[doctor.api.todos :as d.todos]]
        :cljs [[uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
-              [tick.alpha.api :as t]])
-   [hiccup-icons.fa :as fa]))
+              [tick.alpha.api :as t]
+              [hiccup-icons.fa :as fa]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; DB todo crud
+;; Todos data api
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#?(:clj
-   (defn get-todo-db
-     "Matches on just :org/name for now."
-     [item]
-     (some->>
-       (db/query
-         '[:find (pull ?e [*])
-           :in $ ?name
-           :where
-           [?e :org/name ?name]]
-         (:org/name item))
-       ffirst)))
+(defhandler get-todos-handler [] (d.todos/get-todos))
+(defstream todos-stream [] d.todos/*todos-stream*)
 
-#?(:clj
-   (defn upsert-todo-db [item]
-     (let [existing (get-todo-db item)
-           merged   (merge existing item)
-           merged   (update merged :org/id #(or % (java.util.UUID/randomUUID)))]
-       (db/transact [merged])))
-   )
+#?(:cljs
+   (defn use-todos []
+     (let [items       (plasma.uix/state [])
+           handle-resp (fn [its] (reset! items its))]
 
-#?(:clj
-   (comment
-     (db/query
-       '[:find (pull ?e [*])
-         :in $ ?name
-         :where
-         [?e :org/name ?name]]
-       (:org/name --i))
+       (with-rpc [] (get-todos-handler) handle-resp)
+       (with-stream [] (todos-stream) handle-resp)
 
-     (db/query
-       '[:find (pull ?e [*])
-         :where
-         [?e :todo/status :status/in-progress]])))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; org helpers
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#?(:clj
-   (defn parse-created-at [x]
-     x)
-   )
-
-#?(:clj
-   (comment
-     (parse-created-at "20210712:163730")
-     (t/parse "20210712:163730" (t/format "yyyyMMdd:hhmmss"))))
-
-#?(:clj
-   (defn org-item->todo
-     [{:org/keys      [name source-file status]
-       :org.prop/keys [created-at]
-       :as            item}]
-     (->
-       item
-       (assoc :todo/name name
-              :todo/file-name (str (-> source-file fs/parent fs/file-name) "/" (fs/file-name source-file))
-              :todo/created-at (parse-created-at created-at)
-              :todo/status status))))
-
-#?(:clj
-   (comment --i))
-
-#?(:clj
-   (defn org-file-paths []
-     (concat
-       (->>
-         ["~/russmatney/{doctor,clawe,org-crud}/{readme,todo}.org"
-          "~/todo/{journal,projects}.org"]
-         (mapcat #(-> %
-                      r.zsh/expand
-                      (string/split #" ")))))))
-
-#?(:clj
-   (defn build-todos []
-     (->> (org-file-paths)
-          (map fs/file)
-          (filter fs/exists?)
-          (mapcat org-crud/path->flattened-items)
-          (filter :org/status) ;; this is set for org items with a todo state
-          (map org-item->todo)
-          (map #(merge % (get-todo-db %))))))
-
-#?(:clj
-   (comment
-     (->> (build-todos)
-          (filter :todo/status)
-          (group-by :todo/status)
-          (map (fn [[s xs]]
-                 [s (count xs)])))
-
-     (some->>
-       (db/query
-         '[:find (pull ?e [*])
-           :where
-           [?e :todo/status :status/in-progress]]))))
-
-#?(:clj
-   (defn sorted-todos []
-     (->> (build-todos)
-          (sort-by :db/id)
-          reverse
-          (sort-by :todo/status)
-          (sort-by (comp not #{:status/in-progress} :todo/status)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; get-todos
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#?(:clj
-   (defn get-todos []
-     (build-todos)))
-
-#?(:clj
-   (comment
-     (->>
-       (build-todos)
-       (filter :db/id)
-       (count))))
-
-#?(:clj
-   (defsys *todos-stream*
-     :start (s/stream)
-     :stop (s/close! *todos-stream*)))
-
-#?(:clj
-   (comment
-     (sys/start! `*todos-stream*)))
-
-#?(:clj
-   (defn update-todos []
-     (s/put! *todos-stream* (get-todos))))
-
-(defhandler get-todos-handler []
-  (get-todos))
-
-(defstream todos-stream [] *todos-stream*)
+       {:items @items})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; actions
@@ -170,8 +36,8 @@
 
 (defhandler add-to-db [item]
   (println "upserting-to-db" item)
-  (upsert-todo-db item)
-  (update-todos)
+  (d.todos/upsert-todo-db item)
+  (d.todos/update-todos)
   :ok)
 
 (defhandler mark-complete [item]
@@ -179,8 +45,8 @@
   (-> item
       (assoc :todo/status :status/done)
       (assoc :todo/last-completed-at (System/currentTimeMillis))
-      upsert-todo-db)
-  (update-todos)
+      d.todos/upsert-todo-db)
+  (d.todos/update-todos)
   :ok)
 
 (defhandler mark-in-progress [item]
@@ -188,8 +54,8 @@
   (-> item
       (assoc :todo/status :status/in-progress)
       (assoc :todo/last-started-at (System/currentTimeMillis))
-      upsert-todo-db)
-  (update-todos)
+      d.todos/upsert-todo-db)
+  (d.todos/update-todos)
   :ok)
 
 (defhandler mark-not-started [item]
@@ -197,8 +63,8 @@
   (-> item
       (assoc :todo/status :status/not-started)
       (assoc :todo/last-stopped-at (System/currentTimeMillis))
-      upsert-todo-db)
-  (update-todos)
+      d.todos/upsert-todo-db)
+  (d.todos/update-todos)
   :ok)
 
 (defhandler mark-cancelled [item]
@@ -206,8 +72,8 @@
   (-> item
       (assoc :todo/status :status/cancelled)
       (assoc :todo/last-cancelled-at (System/currentTimeMillis))
-      upsert-todo-db)
-  (update-todos)
+      d.todos/upsert-todo-db)
+  (d.todos/update-todos)
   :ok)
 
 #?(:cljs
@@ -258,23 +124,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
-   (defn use-todos []
-     (let [items       (plasma.uix/state [])
-           handle-resp (fn [its] (reset! items its))]
-
-       (with-rpc [] (get-todos-handler) handle-resp)
-       (with-stream [] (todos-stream) handle-resp)
-
-       {:items @items})))
-
-#?(:cljs
    (defn todo
      [{:keys [on-select is-selected?]} item]
      (let [{:db/keys   [id]
             :org/keys  [body urls]
             :todo/keys [status name file-name
-                        last-started-at last-stopped-at
-                        last-cancelled-at last-complete-at
+                        last-started-at last-stopped-at last-cancelled-at last-complete-at
                         ]} item
            hovering?       (uix/state false)]
        [:div

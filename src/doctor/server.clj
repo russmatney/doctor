@@ -10,9 +10,9 @@
 
    [doctor.config :as config]
    [doctor.time-literals-transit :as tlt]
-   [doctor.ui.views.todos :as todos]
    [doctor.api.workspaces :as d.workspaces]
    [doctor.api.topbar :as d.topbar]
+   [doctor.api.todos :as d.todos]
    [doctor.ui.views.screenshots :as screenshots]
    [doctor.ui.views.wallpapers :as wallpapers]))
 
@@ -47,9 +47,9 @@
   :extra-deps
   [d.workspaces/*workspaces-stream*
    d.topbar/*topbar-metadata-stream*
+   d.todos/*todos-stream*
    screenshots/*screenshots-stream*
-   wallpapers/*wallpapers-stream*
-   todos/*todos-stream*]
+   wallpapers/*wallpapers-stream*]
   :start
   (let [port (:server/port config/*config*)]
     (log/info "Starting *server* on port" port)
@@ -77,7 +77,7 @@
 
           (= uri "/todos/update")
           (do
-            (todos/update-todos)
+            (d.todos/update-todos)
             {:status 200 :body "updated todos"})
 
           (= uri "/ws")
