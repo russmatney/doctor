@@ -121,13 +121,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
+   (defn hours [n] (* 1000 60 60 n)))
+
+#?(:cljs
+   (defn ms-ago [ms-timestamp]
+     (- (js/Date.now) ms-timestamp)))
+
+#?(:cljs
    (defn ->actions
      ([wsp] (->actions nil wsp))
      ([{:keys [hovering?]} wsp]
       (let [{:keys [awesome.tag/selected
                     git/dirty?
                     git/needs-push?
-                    git/needs-pull?]} wsp]
+                    git/needs-pull?
+                    git/last-fetch-timestamp]} wsp]
         (->>
           [(when needs-push? {:action/icon {:icon    mdi/github-face
                                             :color   "text-city-red-400"
@@ -138,6 +146,10 @@
            (when dirty? {:action/icon {:icon    mdi/github-face
                                        :color   "text-city-green-500"
                                        :tooltip "Dirty"}})
+           (when (and last-fetch-timestamp (> (ms-ago (* last-fetch-timestamp 1000)) (hours 3)))
+             {:action/icon {:icon    mdi/github-face
+                            :color   "text-city-yellow-500"
+                            :tooltip "Last Fetch over 3 hours ago"}})
            (when (and selected hovering?)
              {:action/label    "hide"
               :action/on-click #(hide-workspace wsp)
@@ -147,6 +159,7 @@
               :action/on-click #(show-workspace wsp)
               :action/icon     {:icon fa/eye}})]
           (remove nil?))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Icons
