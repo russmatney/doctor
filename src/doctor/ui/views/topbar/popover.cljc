@@ -88,6 +88,15 @@
               {:class ["mb-4" "font-mono"]}
               dir]
 
+             [debug/raw-metadata
+              {:label "Raw Workspace Metadata"}
+              (->>
+                wsp
+                ;; (remove (comp #{:awesome.client/name
+                ;;                 :awesome.client/class
+                ;;                 :awesome.client/instance} first))
+                (sort-by first))]
+
              (when (seq clients)
                (for [client clients]
                  ^{:key (:awesome.client/window client)}
