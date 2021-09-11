@@ -50,7 +50,8 @@
         :active-clients    (->> @workspaces
                                 (filter :awesome.tag/selected)
                                 (mapcat :awesome.tag/clients)
-                                (remove skip-bar-app?))
+                                (remove skip-bar-app?)
+                                (w/distinct-by :awesome.client/window))
         :active-workspaces (->> @workspaces (filter :awesome.tag/selected))})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
