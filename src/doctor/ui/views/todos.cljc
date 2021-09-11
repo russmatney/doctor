@@ -111,14 +111,19 @@
                   :href  url}
               url])])])))
 
-#?(:cljs
-   (def filter-defs
-     {:file-name {:label    "Source File"
-                  :group-by :todo/file-name}
-      :status    {:label    "Status"
-                  :group-by :todo/status}
-      :in-db?    {:label    "DB"
-                  :group-by (comp (fn [x] (if x :db-todo :org-todo)) :db/id)}}))
+(def filter-defs
+  {:file-name {:label    "Source File"
+               :group-by :todo/file-name}
+   :status    {:label    "Status"
+               :group-by :todo/status}
+   :in-db?    {:label    "DB"
+               :group-by (comp (fn [x] (if x :in-db :in-org)) :db/id)}})
+
+(def default-filters
+  #{{:def-k :status :res :status/not-started}
+    {:def-k :status :res :status/in-progress}
+    {:def-k :file-name :res "todo/journal.org"}
+    {:def-k :file-name :res "todo/projects.org"}})
 
 #?(:cljs
    (defn split-counts [items {:keys [set-group-by toggle-filter-by
@@ -170,7 +175,7 @@
 
            selected        (uix/state (first items))
            items-group-by  (uix/state (some->> filter-defs first first))
-           items-filter-by (uix/state #{})
+           items-filter-by (uix/state default-filters)
 
            filtered-items
            (if-not (seq @items-filter-by) items
@@ -181,16 +186,13 @@
                                      (comp
                                        (->> vals (map :res) (into #{}))
                                        (-> def-k filter-defs :group-by)))))]
-                     (->> items
-                          (filter
-                            (apply every-pred preds)))))
+                     (->> items (filter (apply every-pred preds)))))
 
            filtered-item-groups (->> filtered-items
                                      (group-by (some-> @items-group-by filter-defs :group-by))
                                      (map (fn [[status its]]
                                             {:item-group its
-                                             :label      status})))
-           ]
+                                             :label      status})))]
        [:div
         {:class ["flex" "flex-col" "flex-wrap"
                  "overflow-hidden"
@@ -211,11 +213,8 @@
         ;; (when @selected
         ;;   (selected-node @selected))
 
-        ;; TODO group/filter by file-name
-        ;; TODO group/filter by status
         ;; TODO group/filter by tag
         ;; TODO group/filter by scheduled-date
-        ;; TODO opt-in/out of files
 
         [todo-list
          {:label     "In Progress"
