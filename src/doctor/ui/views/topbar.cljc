@@ -199,7 +199,9 @@
                 {:keys [color] :as icon-def}                   (icons/client->icon c workspace)]
             ^{:key (or window c-name)}
             [:div
-             {:class ["flex" "flex-row" "items-center" "justify-center"]}
+             {:class         ["flex" "flex-row" "items-center" "justify-center"]
+              :on-mouse-over #(on-hover-client c)
+              :on-mouse-out  #(on-unhover-client c)}
              (when (and ->show-name? (->show-name? c))
                [:span
                 {:class ["px-2"]}
@@ -207,8 +209,6 @@
 
              [bar-icon (-> icon-def
                            (assoc
-                             :on-mouse-over #(on-hover-client c)
-                             :on-mouse-out  #(on-unhover-client c)
                              :fallback-text c-name
                              :color color
                              :classes ["border-opacity-0"
