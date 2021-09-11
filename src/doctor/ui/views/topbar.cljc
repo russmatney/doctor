@@ -187,7 +187,9 @@
 
 #?(:cljs
    (defn client-icon-list
-     [{:keys [on-hover-client on-unhover-client workspace]} clients]
+     [{:keys [on-hover-client on-unhover-client workspace
+              ->show-name?
+              ]} clients]
      (when (seq clients)
        [:div
         {:class ["flex" "flex-row" "flex-wrap"]}
@@ -196,19 +198,26 @@
                 {:awesome.client/keys [window urgent focused]} c
                 {:keys [color] :as icon-def}                   (icons/client->icon c workspace)]
             ^{:key (or window c-name)}
-            [bar-icon (-> icon-def
-                          (assoc
-                            :on-mouse-over #(on-hover-client c)
-                            :on-mouse-out  #(on-unhover-client c)
-                            :fallback-text c-name
-                            :color color
-                            :classes ["border-opacity-0"
-                                      (cond
-                                        focused "text-city-orange-400"
-                                        urgent  "text-city-red-400"
-                                        color   color
-                                        :else   "text-city-blue-400")]
-                            :border? true))]))])))
+            [:div
+             {:class ["flex" "flex-row" "items-center" "justify-center"]}
+             (when (and ->show-name? (->show-name? c))
+               [:span
+                {:class ["px-2"]}
+                c-name])
+
+             [bar-icon (-> icon-def
+                           (assoc
+                             :on-mouse-over #(on-hover-client c)
+                             :on-mouse-out  #(on-unhover-client c)
+                             :fallback-text c-name
+                             :color color
+                             :classes ["border-opacity-0"
+                                       (cond
+                                         focused "text-city-orange-400"
+                                         urgent  "text-city-red-400"
+                                         color   color
+                                         :else   "text-city-blue-400")]
+                             :border? true))]]))])))
 
 (def cell-classes
   ["flex" "flex-row" "justify-center"
@@ -228,7 +237,9 @@
          :on-mouse-leave #(reset! hovering? false)}
         [:div {:class ["flex" "flex-row" "items-center" "justify-center"]}
          ;; icons
-         [client-icon-list topbar-state clients]]])))
+         [client-icon-list (assoc topbar-state
+                                  :->show-name? (fn [{:keys [awesome.client/focused]}] focused))
+          clients]]])))
 
 #?(:cljs
    (defn workspace-cell

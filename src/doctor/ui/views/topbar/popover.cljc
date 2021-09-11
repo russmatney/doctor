@@ -1,7 +1,11 @@
 (ns doctor.ui.views.topbar.popover
   (:require
    #?@(:cljs [[doctor.ui.components.icons :as icons]
-              [doctor.ui.components.debug :as debug]])))
+              [doctor.ui.components.debug :as debug]
+              [doctor.ui.views.wallpapers :as wp]
+              [doctor.ui.views.todos :as td]
+              [doctor.ui.views.screenshots :as sc]
+              ])))
 
 (defn is-bar-app? [client]
   (and
@@ -34,12 +38,7 @@
 
          [debug/raw-metadata
           (merge {:label "Raw Client Metadata"} opts)
-          (->>
-            client
-            (remove (comp #{:awesome.client/name
-                            :awesome.client/class
-                            :awesome.client/instance} first))
-            (sort-by first))]]))))
+          (->> client (sort-by first))]]))))
 
 #?(:cljs
    (defn detail-window [{:keys [active-workspaces hovered-workspace
@@ -90,12 +89,7 @@
 
              [debug/raw-metadata
               {:label "Raw Workspace Metadata"}
-              (->>
-                wsp
-                ;; (remove (comp #{:awesome.client/name
-                ;;                 :awesome.client/class
-                ;;                 :awesome.client/instance} first))
-                (sort-by first))]
+              (->> wsp (sort-by first))]
 
              (when (seq clients)
                (for [client clients]
@@ -108,4 +102,11 @@
          [client-metadata {:initial-show? true} hovered-client]])
 
       [debug/raw-metadata {:label "Raw Topbar Metadata"}
-       (->> metadata (sort-by first))]]))
+       (->> metadata (sort-by first))]
+
+      ;; TODO tabs
+      ;; [wp/widget]
+      [td/widget]
+      ;; [sc/widget]
+
+      ]))
