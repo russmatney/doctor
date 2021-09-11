@@ -6,7 +6,8 @@
               [plasma.uix :refer [with-rpc with-stream]]
               [tick.alpha.api :as t]
               [hiccup-icons.fa :as fa]
-              [doctor.ui.components.todos :as todos]])))
+              [doctor.ui.components.todos :as todos]])
+   [wing.core :as w]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Todos data api
@@ -23,7 +24,11 @@
        (with-rpc [] (get-todos-handler) handle-resp)
        (with-stream [] (todos-stream) handle-resp)
 
-       {:items @items})))
+       {:items     @items
+        :db-todos  (->> @items
+                        (filter :db/id))
+        :org-todos (->> @items
+                        (remove :db/id))})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Frontend
@@ -107,37 +112,46 @@
               url])])])))
 
 #?(:cljs
-   (defn split-counts [items {:keys [set-group-by]}]
-     (let [bys [{:group-by :todo/file-name
-                 :label    "Source File"}
-                {:group-by :todo/status
-                 :label    "Status"}
-                {:group-by (comp boolean :db/id)
-                 :label    "DB"}]]
-       [:div.flex.flex-row.flex-wrap
+   (def filter-defs
+     {:file-name {:label    "Source File"
+                  :group-by :todo/file-name}
+      :status    {:label    "Status"
+                  :group-by :todo/status}
+      :in-db?    {:label    "DB"
+                  :group-by (comp (fn [x] (if x :db-todo :org-todo)) :db/id)}}))
 
-        (for [[i by] (map-indexed vector bys)]
-          (let [split (->> items
-                           (group-by (:group-by by))
-                           (map (fn [[v xs]] [v (count xs)])))]
-            ^{:key i}
-            [:div
-             {:class [(when-not (zero? i) "px-8")]}
-             [:div.text-xl.font-nes
-              {:class    ["cursor-pointer"
-                          "hover:text-city-red-600"]
-               :on-click #(set-group-by (:group-by by))}
-              (:label by)]
-             [:div
-              (for [[i [k v]] (->> split (sort-by second) (map-indexed vector))]
+#?(:cljs
+   (defn split-counts [items {:keys [set-group-by toggle-filter-by
+                                     items-group-by items-filter-by]}]
+     [:div.flex.flex-row.flex-wrap
+      (for [[i [def-k split-def]] (map-indexed vector filter-defs)]
+        (let [split             (->> items
+                                     (group-by (:group-by split-def))
+                                     (map (fn [[v xs]] [v (count xs)])))
+              group-by-enabled? (= items-group-by def-k)]
+          ^{:key i}
+          [:div
+           {:class [(when-not (zero? i) "px-8")]}
+           [:div.text-xl.font-nes
+            {:class    ["cursor-pointer"
+                        "hover:text-city-red-600"
+                        (when group-by-enabled?
+                          "text-city-pink-400")]
+             :on-click #(set-group-by def-k)}
+            (:label split-def)]
+           [:div
+            (for [[i [k v]] (->> split (sort-by second) (map-indexed vector))]
+              (let [filter-enabled? (items-filter-by {:def-k def-k :res k})]
                 ^{:key i}
                 [:div
                  {:class    ["flex" "font-mono"
                              "cursor-pointer"
-                             "hover:text-city-red-600"]
-                  :on-click #(js/alert (str by " - " k " : " v))}
+                             "hover:text-city-red-600"
+                             (when filter-enabled?
+                               "text-city-pink-400")]
+                  :on-click #(toggle-filter-by {:def-k def-k :res k})}
                  [:span.p-1.text-xl v]
-                 [:span.p-1.text-xl (str k)]])]]))])))
+                 [:span.p-1.text-xl (str k)]]))]]))]))
 
 #?(:cljs
    (defn todo-list [{:keys [label selected on-select]} todos]
@@ -152,14 +166,28 @@
 
 #?(:cljs
    (defn widget []
-     (let [{:keys [items]} (use-todos)
+     (let [{:keys [items db-todos org-todos]} (use-todos)
+
            selected        (uix/state (first items))
-           items-by        (uix/state :todo/file-name)
-           item-groups     (->> items
-                                (group-by @items-by)
-                                (map (fn [[status its]]
-                                       {:item-group its
-                                        :label      status})))]
+           items-group-by  (uix/state (some->> filter-defs first first))
+           items-filter-by (uix/state #{})
+
+           filtered-items
+           (if-not (seq @items-filter-by) items
+                   (let [preds
+                         (->> @items-filter-by
+                              (map (fn [{:keys [def-k res]}]
+                                     (comp #{res} (-> def-k filter-defs :group-by)))))]
+                     (->> items
+                          (filter
+                            (apply every-pred preds)))))
+
+           filtered-item-groups (->> filtered-items
+                                     (group-by (some-> @items-group-by filter-defs :group-by))
+                                     (map (fn [[status its]]
+                                            {:item-group its
+                                             :label      status})))
+           ]
        [:div
         {:class ["flex" "flex-col" "flex-wrap"
                  "overflow-hidden"
@@ -168,7 +196,13 @@
 
         [:div
          {:class ["p-4"]}
-         [split-counts items {:set-group-by #(reset! items-by %)}]]
+         [split-counts items {:set-group-by    #(reset! items-group-by %)
+                              :toggle-filter-by
+                              (fn [f-by]
+                                (swap! items-filter-by
+                                       #(if (% f-by) (disj % f-by) (conj % f-by))))
+                              :items-filter-by @items-filter-by
+                              :items-group-by  @items-group-by}]]
 
         ;; TODO move 'selected' to 'current'?
         ;; (when @selected
@@ -184,10 +218,18 @@
          {:label     "In Progress"
           :on-select (fn [it] (reset! selected it))
           :selected  @selected}
-         (->> items (filter (comp #{:status/in-progress} :todo/status)))]
+         (->> db-todos (filter (comp #{:status/in-progress} :todo/status)))]
+
+        [todo-list
+         {:label     "Incomplete DB Todos"
+          :on-select (fn [it] (reset! selected it))
+          :selected  @selected}
+         (->> db-todos
+              (remove (comp #{:status/done
+                              :status/cancelled} :todo/status)))]
 
         (for [[i {:keys [item-group label]}]
-              (map-indexed vector item-groups)]
+              (map-indexed vector filtered-item-groups)]
           ^{:key i}
           [todo-list {:label     (str label " (" (count item-group) ")")
                       :on-select (fn [it] (reset! selected it))
