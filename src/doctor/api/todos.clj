@@ -120,8 +120,9 @@
 (defn get-todos []
   (let [org-todos (build-org-todos)
         db-todos  (list-todos-db)
-        all       (->> (concat org-todos db-todos)
-                       (w/distinct-by :org/name))]
+        ;; should these be merged instead of concat/deduped?
+        all (->> (concat org-todos db-todos)
+                 (w/distinct-by :org/name))]
     all))
 
 (comment

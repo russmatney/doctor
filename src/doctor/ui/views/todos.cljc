@@ -6,8 +6,7 @@
               [plasma.uix :refer [with-rpc with-stream]]
               [tick.alpha.api :as t]
               [hiccup-icons.fa :as fa]
-              [doctor.ui.components.todos :as todos]])
-   [wing.core :as w]))
+              [doctor.ui.components.todos :as todos]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Todos data api
@@ -31,27 +30,21 @@
                         (remove :db/id))})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Frontend
+;; Todo
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
    (defn todo
-     [{:keys [on-select is-selected?]} item]
+     [{:keys [on-select]} item]
      (let [{:db/keys   [id]
             :org/keys  [body urls]
-            :todo/keys [status name file-name
-                        last-started-at last-stopped-at last-cancelled-at last-complete-at
-                        ]} item
-           hovering?       (uix/state false)]
+            :todo/keys [status name file-name last-started-at]} item]
        [:div
-        {:class          ["m-1" "py-2" "px-4"
-                          "border" "border-city-blue-600"
-                          "bg-yo-blue-700"
-                          "text-white"
-                          (when @hovering? "cursor-pointer")]
-         :on-click       #(on-select)
-         :on-mouse-enter #(reset! hovering? true)
-         :on-mouse-leave #(reset! hovering? false)}
+        {:class    ["py-2" "px-4" "w-1/3"
+                    "border" "border-city-blue-600"
+                    "bg-yo-blue-700"
+                    "text-white"]
+         :on-click #(on-select)}
 
         [:div
          {:class ["flex" "justify-between"]}
@@ -111,6 +104,26 @@
                   :href  url}
               url])])])))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Todo list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#?(:cljs
+   (defn todo-list [{:keys [label selected on-select]} todos]
+     [:div {:class ["flex" "flex-col"]}
+      [:div {:class ["text-2xl" "p-2" "pt-4"]} label]
+      [:div {:class ["flex" "flex-row" "flex-wrap" "justify-center"]}
+       (for [[i it] (->> todos (map-indexed vector))]
+         ^{:key i}
+         [todo
+          {:on-select    #(on-select it)
+           :is-selected? (= selected it)}
+          (assoc it :index i)])]]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; grouping and filtering
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def filter-defs
   {:file-name {:label    "Source File"
                :group-by :todo/file-name}
@@ -158,20 +171,13 @@
                  [:span.p-1.text-xl v]
                  [:span.p-1.text-xl (str k)]]))]]))]))
 
-#?(:cljs
-   (defn todo-list [{:keys [label selected on-select]} todos]
-     [:div {:class ["flex" "flex-col" "flex-wrap" "justify-center"]}
-      [:div {:class ["text-2xl" "p-2" "pt-4"]} label]
-      (for [[i it] (->> todos (map-indexed vector))]
-        ^{:key i}
-        [todo
-         {:on-select    #(on-select it)
-          :is-selected? (= selected it)}
-         (assoc it :index i)])]))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; base widget
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #?(:cljs
    (defn widget []
-     (let [{:keys [items db-todos org-todos]} (use-todos)
+     (let [{:keys [items db-todos]} (use-todos)
 
            selected        (uix/state (first items))
            items-group-by  (uix/state (some->> filter-defs first first))
@@ -208,13 +214,6 @@
                                        #(if (% f-by) (disj % f-by) (conj % f-by))))
                               :items-filter-by @items-filter-by
                               :items-group-by  @items-group-by}]]
-
-        ;; TODO move 'selected' to 'current'?
-        ;; (when @selected
-        ;;   (selected-node @selected))
-
-        ;; TODO group/filter by tag
-        ;; TODO group/filter by scheduled-date
 
         [todo-list
          {:label     "In Progress"
