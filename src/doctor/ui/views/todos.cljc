@@ -176,8 +176,11 @@
            (if-not (seq @items-filter-by) items
                    (let [preds
                          (->> @items-filter-by
-                              (map (fn [{:keys [def-k res]}]
-                                     (comp #{res} (-> def-k filter-defs :group-by)))))]
+                              (group-by :def-k)
+                              (map (fn [[def-k vals]]
+                                     (comp
+                                       (->> vals (map :res) (into #{}))
+                                       (-> def-k filter-defs :group-by)))))]
                      (->> items
                           (filter
                             (apply every-pred preds)))))
