@@ -5,6 +5,7 @@
               [doctor.ui.views.wallpapers :as wp]
               [doctor.ui.views.todos :as td]
               [doctor.ui.views.screenshots :as sc]
+              [uix.core.alpha :as uix]
               ])))
 
 (defn is-bar-app? [client]
@@ -41,22 +42,10 @@
           (->> client (sort-by first))]]))))
 
 #?(:cljs
-   (defn detail-window [{:keys [active-workspaces hovered-workspace
-                                hovered-client
-                                push-below]} metadata]
+   (defn active-workspace [{:keys [active-workspaces hovered-workspace
+                                   hovered-client]}
+                           metadata]
      [:div
-      {:class          ["m-6" "ml-auto" "p-6"
-                        "bg-yo-blue-500"
-                        "bg-opacity-80"
-                        "border-city-blue-400"
-                        "rounded"
-                        "w-2/3"
-                        "text-white"
-                        "overflow-y-auto"
-                        "h-5/6" ;; scroll requires parent to have a height
-                        ]
-       :on-mouse-leave push-below}
-
       (when (or (seq active-workspaces) hovered-workspace)
         (for [wsp (if hovered-workspace [hovered-workspace] active-workspaces)]
           (let [{:keys [workspace/directory
@@ -102,11 +91,42 @@
          [client-metadata {:initial-show? true} hovered-client]])
 
       [debug/raw-metadata {:label "Raw Topbar Metadata"}
-       (->> metadata (sort-by first))]
+       (->> metadata (sort-by first))]]))
 
-      ;; TODO tabs
-      ;; [wp/widget]
-      [td/widget]
-      ;; [sc/widget]
+#?(:cljs
+   (defn detail-window [{:keys [push-below] :as opts} metadata]
+     (let [current (uix/state :tab/workspaces)]
 
-      ]))
+       [:div
+        {:class          ["m-6" "ml-auto" "p-6"
+                          "bg-yo-blue-500"
+                          "bg-opacity-80"
+                          "border-city-blue-400"
+                          "rounded"
+                          "w-2/3"
+                          "text-white"
+                          "overflow-y-auto"
+                          "h-5/6" ;; scroll requires parent to have a height
+                          ]
+         :on-mouse-leave push-below}
+
+        [:div "Select tab"
+         (for [t [:tab/workspaces
+                  :tab/wallpapers
+                  :tab/todos
+                  :tab/screenshots]]
+           ^{:key t}
+           [:div.text-xl
+            {:class    ["cursor-pointer"
+                        "hover:text-city-red-400"
+                        (when (#{t} @current)
+                          "text-city-green-400")
+                        ]
+             :on-click #(reset! current t)}
+            t])]
+
+        (case @current
+          :tab/workspaces  [active-workspace opts metadata]
+          :tab/wallpapers  [wp/widget]
+          :tab/todos       [td/widget]
+          :tab/screenshots [sc/widget])])))
