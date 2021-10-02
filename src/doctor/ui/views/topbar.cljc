@@ -107,14 +107,21 @@
             (tset c :below false)
             (tset c :ontop true)))))
     (awm/awm-fnl
-      '(->
-         (client.get)
-         (lume.filter (fn [c] (= c.name "clover/doctor-topbar")))
-         (lume.first)
-         ((fn [c]
-            (tset c :above false)
-            (tset c :below true)
-            (tset c :ontop false))))))
+      '(do
+         ;; bury everything else
+         (-> (client.get)
+             (lume.filter (fn [c] c.ontop))
+             (lume.map (fn [c] (tset c :ontop false))))
+
+         ;; keep topbar ontop
+         (->
+           (client.get)
+           (lume.filter (fn [c] (= c.name "clover/doctor-topbar")))
+           (lume.first)
+           ((fn [c]
+              (tset c :above false)
+              (tset c :below true)
+              (tset c :ontop false)))))))
   above?)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
