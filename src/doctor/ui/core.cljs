@@ -13,6 +13,7 @@
 
    [doctor.ui.views.todos :as views.todos]
    [doctor.ui.views.topbar :as views.topbar]
+   [doctor.ui.views.popover :as views.popover]
    [doctor.ui.views.screenshots :as views.screenshots]
    [doctor.ui.views.wallpapers :as views.wallpapers]
    [doctor.ui.views.workspaces :as views.workspaces]))
@@ -86,7 +87,7 @@
   []
   (let [page-name (-> router/*match* uix/context :data :name)]
     (case page-name
-      :page/home        [home nil]
+      :page/home        [home views.popover/tabs]
       :page/todos       [home views.todos/widget]
       :page/topbar      [views.topbar/widget]
       :page/topbar-bg   [home views.topbar/widget]

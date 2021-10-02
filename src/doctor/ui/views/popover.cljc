@@ -1,4 +1,4 @@
-(ns doctor.ui.views.topbar.popover
+(ns doctor.ui.views.popover
   (:require
    #?@(:cljs [[doctor.ui.components.icons :as icons]
               [doctor.ui.components.debug :as debug]
@@ -94,22 +94,9 @@
        (->> metadata (sort-by first))]]))
 
 #?(:cljs
-   (defn detail-window [{:keys [push-below] :as opts} metadata]
+   (defn tabs [opts metadata]
      (let [current (uix/state :tab/workspaces)]
-
        [:div
-        {:class          ["m-6" "ml-auto" "p-6"
-                          "bg-yo-blue-500"
-                          "bg-opacity-80"
-                          "border-city-blue-400"
-                          "rounded"
-                          "w-2/3"
-                          "text-white"
-                          "overflow-y-auto"
-                          "h-5/6" ;; scroll requires parent to have a height
-                          ]
-         :on-mouse-leave push-below}
-
         [:div "Select tab"
          (for [t [:tab/workspaces
                   :tab/wallpapers
@@ -130,3 +117,20 @@
           :tab/wallpapers  [wp/widget]
           :tab/todos       [td/widget]
           :tab/screenshots [sc/widget])])))
+
+#?(:cljs
+   (defn detail-window [{:keys [push-below] :as opts} metadata]
+     [:div
+      {:class          ["m-6" "ml-auto" "p-6"
+                        "bg-yo-blue-500"
+                        "bg-opacity-80"
+                        "border-city-blue-400"
+                        "rounded"
+                        "w-2/3"
+                        "text-white"
+                        "overflow-y-auto"
+                        "h-5/6" ;; scroll requires parent to have a height
+                        ]
+       :on-mouse-leave push-below}
+
+      [tabs opts metadata]]))

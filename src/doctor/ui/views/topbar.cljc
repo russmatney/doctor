@@ -17,7 +17,7 @@
               [doctor.ui.components.icons :as icons]
               [doctor.ui.components.charts :as charts]
               [doctor.ui.components.todos :as todos]
-              [doctor.ui.views.topbar.popover :as popover]])))
+              [doctor.ui.views.popover :as popover]])))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
