@@ -24,6 +24,10 @@
         {:color "text-city-blue-400"
          :src   "/assets/candy-icons/emacs.svg"})
 
+      (= "VSCodium" class)
+      {:color "text-city-green-600"
+       :src   "/assets/candy-icons/vscodium.svg"}
+
       (= "Alacritty" class)
       {:color "text-city-green-600"
        :src   "/assets/candy-icons/Alacritty.svg"}
