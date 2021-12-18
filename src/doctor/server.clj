@@ -10,6 +10,7 @@
 
    [doctor.config :as config]
    [doctor.time-literals-transit :as tlt]
+   [doctor.api.core :as api]
    [doctor.api.workspaces :as d.workspaces]
    [doctor.api.topbar :as d.topbar]
    [doctor.api.todos :as d.todos]
@@ -54,43 +55,25 @@
   (let [port (:server/port config/*config*)]
     (log/info "Starting *server* on port" port)
     (undertow/run-undertow
-      (fn [{:keys [uri] :as _req}]
+      (fn [{:keys [uri] :as req}]
         (log/info "request" uri (System/currentTimeMillis))
-        ;; poor man's router
         (cond
-          (= uri "/topbar/update")
-          (do
-            (d.workspaces/update-workspaces)
-            (d.topbar/update-topbar-metadata)
-            {:status 200 :body "updated topbar"})
-
-          (= uri "/dock/update")
-          (do
-            (d.workspaces/update-workspaces)
-            (d.topbar/update-topbar-metadata)
-            {:status 200 :body "updated topbar"})
-
-          (= uri "/screenshots/update")
-          (do
-            (screenshots/update-screenshots)
-            {:status 200 :body "updated screenshots"})
-
-          (= uri "/todos/update")
-          (do
-            (d.todos/update-todos)
-            {:status 200 :body "updated todos"})
-
+          ;; handle plasma requests
           (= uri "/ws")
           {:undertow/websocket
-           {:on-open    #(do (log/info "Client connected")
-                             (plasma.server/on-connect! *plasma-server* %))
+           {:on-open #(do (log/info "Client connected")
+                          (plasma.server/on-connect! *plasma-server* %))
+
             :on-message #(plasma.server/on-message!
                            *plasma-server*
                            (:channel %)
                            (:data %))
             :on-close   #(plasma.server/on-disconnect!
                            *plasma-server*
-                           (:ws-channel %))}}))
+                           (:ws-channel %))}}
+
+          ;; poor man's router
+          :else (api/route req)))
       {:port             port
        :session-manager? false
        :websocket?       true}))
@@ -104,5 +87,6 @@
   (sys/restart! `*server*)
   *server*
 
+  (slurp "http://localhost:3334/dock/update")
   (slurp "http://localhost:3334/dock/update")
   (println "hi"))

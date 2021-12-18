@@ -3,7 +3,8 @@
    [plasma.core :refer [defhandler defstream]]
    #?@(:clj [[systemic.core :refer [defsys] :as sys]
              [manifold.stream :as s]
-             [clawe.wallpapers :as c.wallpapers]]
+             [clawe.wallpapers :as c.wallpapers]
+             [doctor.api.wallpapers :as d.wallpapers]]
        :cljs [[wing.core :as w]
               [uix.core.alpha :as uix]
               [plasma.uix :refer [with-rpc with-stream]]
@@ -14,17 +15,8 @@
 ;; API
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#?(:clj
-   (defn active-wallpapers []
-     (let [all (c.wallpapers/all-wallpapers)]
-       (->>
-         all
-         (sort-by :background/last-time-set)
-         reverse
-         (into [])))))
-
 (defhandler get-wallpapers []
-  (active-wallpapers))
+  (d.wallpapers/active-wallpapers))
 
 #?(:clj
    (defsys *wallpapers-stream*
@@ -36,7 +28,7 @@
 #?(:clj
    (defn update-wallpapers []
      (println "pushing to wallpapers stream (updating wallpapers)!")
-     (s/put! *wallpapers-stream* (active-wallpapers))))
+     (s/put! *wallpapers-stream* (d.wallpapers/active-wallpapers))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; actions
