@@ -106,3 +106,22 @@ Both of these files are ready to go in this repo, you'll just need a symlink:
 #+begin_src sh
 ln -s ~/russmatney/doctor/doctor-dock-electron.desktop ~/.local/share/applications/.
 #+end_src
+** tauri
+
+install tauri-cli
+
+#+begin_src sh
+cargo install tauri-cli --git https://github.com/tauri-apps/tauri
+#+end_src
+
+run dev:
+
+#+begin_src sh
+cargo tauri dev
+#+end_src
+
+build release:
+
+#+begin_src sh
+cargo tauri build
+#+end_src

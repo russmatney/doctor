@@ -17,7 +17,10 @@
               [doctor.ui.components.icons :as icons]
               [doctor.ui.components.charts :as charts]
               [doctor.ui.components.todos :as todos]
-              [doctor.ui.views.popover :as popover]])))
+              [doctor.ui.views.popover :as popover]
+              ["@tauri-apps/api" :as tauri]
+              ["@tauri-apps/api/window" :as twindow :refer (appWindow getAll)]
+              ])))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -442,6 +445,48 @@
          [current-task metadata]]
 
         ;; below bar
-        (when (:topbar-above topbar-state)
-          [popover/detail-window
-           (assoc topbar-state :active-workspaces active-workspaces) metadata])])))
+        ;; (when (:topbar-above topbar-state)
+        ;;   [popover/detail-window
+        ;;    (assoc topbar-state :active-workspaces active-workspaces) metadata])
+        ])))
+
+#?(:cljs
+   (comment
+     (let [w tauri/window.appWindow]
+       (js/Object.keys w)
+       )
+
+     appWindow
+     (getAll)
+
+     (println "hi")
+     (-> appWindow
+         (.hide)
+         (.then println)
+         (.catch println)
+         (.finally println)
+         )
+     (-> appWindow
+         (.innerSize)
+         (.then println)
+         (.catch println)
+         (.finally println)
+         )
+
+     (-> tauri/window.appWindow
+         js/Object.keys)
+
+     (.. tauri/window.appWindow
+         -label)
+
+     (.. tauri/window.appWindow
+         -listeners)
+
+     (twindow/getAll)
+     (twindow/getCurrent)
+
+     (->> (tauri/window.getAll))
+
+
+     (.. js/window
+         -__TAURI__)))

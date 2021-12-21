@@ -25,6 +25,7 @@
 (def routes
   [["/" {:name :page/home}]
    ["/todos" {:name :page/todos}]
+   ["/popup" {:name :page/popup}]
    ["/topbar" {:name :page/topbar}]
    ["/topbar-bg" {:name :page/topbar-bg}]
    ["/counter" {:name :page/counter}]
@@ -59,6 +60,7 @@
                      "font-nes"]}
        (for [[page-name label] [[:page/home "Home"]
                                 [:page/todos "Todos"]
+                                [:page/popup "Pop Up"]
                                 [:page/topbar "Top Bar"]
                                 [:page/topbar-bg "Top Bar BG"]
                                 [:page/counter "Counter"]
@@ -89,6 +91,7 @@
     (case page-name
       :page/home        [home views.popover/tabs]
       :page/todos       [home views.todos/widget]
+      :page/popup       [views.popover/popup]
       :page/topbar      [views.topbar/widget]
       :page/topbar-bg   [home views.topbar/widget]
       :page/counter     [home counter]

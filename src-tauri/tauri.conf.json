@@ -7,7 +7,8 @@
     "distDir": "../public",
     "devPath": "http://localhost:3333",
     "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "beforeBuildCommand": "",
+    "withGlobalTauri": true
   },
   "tauri": {
     "bundle": {
@@ -49,11 +50,41 @@
       "active": false
     },
     "allowlist": {
-      "all": true
+      "all": true,
+      "window": {
+        "all": true,
+        "create": true
+      }
     },
     "windows": [
       {
-        "title": "doctor-topbar",
+        "label": "topbar",
+        "title": "tauri/doctor-topbar",
+        "url": "http://localhost:3333/topbar",
+        "y": 0,
+        "x": 0,
+        "width": 1800,
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": true
+      },
+      {
+        "label": "popup",
+        "title": "tauri/doctor-popup",
+        "url": "http://localhost:3333/popup",
+        "width": 200,
+        "height": 200,
+        "resizable": true,
+        "fullscreen": false,
+        "transparent": true,
+        "visible": false,
+        "focus": false
+      },
+      {
+        "label": "main",
+        "title": "tauri/doctor-main",
+        "url": "http://localhost:3333",
         "width": 800,
         "height": 600,
         "resizable": true,

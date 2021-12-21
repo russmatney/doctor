@@ -134,3 +134,9 @@
        :on-mouse-leave push-below}
 
       [tabs opts metadata]]))
+
+
+#?(:cljs
+   (defn popup [_opts _metadata]
+     [:div
+      [:div "Some popover"]]))
