@@ -143,7 +143,8 @@
                     git/dirty?
                     git/needs-push?
                     git/needs-pull?
-                    git/last-fetch-timestamp]} wsp]
+                    ;; git/last-fetch-timestamp
+                    ]} wsp]
         (->>
           [(when needs-push? {:action/icon {:icon    mdi/github-face
                                             :color   "text-city-red-400"
@@ -154,10 +155,10 @@
            (when dirty? {:action/icon {:icon    mdi/github-face
                                        :color   "text-city-green-500"
                                        :tooltip "Dirty"}})
-           (when (and last-fetch-timestamp (> (ms-ago (* last-fetch-timestamp 1000)) (hours 3)))
-             {:action/icon {:icon    mdi/github-face
-                            :color   "text-city-yellow-500"
-                            :tooltip "Last Fetch over 3 hours ago"}})
+           ;; (when (and last-fetch-timestamp (> (ms-ago (* last-fetch-timestamp 1000)) (hours 3)))
+           ;;   {:action/icon {:icon    mdi/github-face
+           ;;                  :color   "text-city-yellow-500"
+           ;;                  :tooltip "Last Fetch over 3 hours ago"}})
            (when (and selected hovering?)
              {:action/label    "hide"
               :action/on-click #(hide-workspace wsp)
@@ -419,6 +420,10 @@
      (let [metadata                                              (use-topbar-metadata)
            {:keys [workspaces active-clients active-workspaces]} (use-workspaces)
            topbar-state                                          (use-topbar-state)]
+       (println
+         (->> workspaces (remove :workspace/scratchpad)
+              (filter :awesome.tag/selected)
+              (map :name)))
 
        [:div
         {:class ["h-screen" "overflow-hidden" "text-city-pink-200"]}
