@@ -1,6 +1,12 @@
 #+TITLE: Readme
 #+STARTUP: overview
 
+* Deprecated
+
+This repository's code has been completely consumed in
+[[https://github.com/russmatney/clawe][russmatney/clawe]], where it has evolved
+along with that monorepo.
+
 * Jump in
 - [[file:src/user.clj][user.clj]]
 - [[file:deps.edn][deps.edn]]
